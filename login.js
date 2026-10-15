@@ -3,8 +3,10 @@ import {
   getAuth,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  RecaptchaVerifier,
-  signInWithPhoneNumber
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
+  signOut
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, doc, setDoc, getDoc
@@ -15,15 +17,37 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// ساخت پروفایل — فقط بار اول که کاربر ثبت‌نام می‌کنه
-async function createUserProfile(user) {
+// ✏️✏️✏️ این خط را با آدرس واقعی index.html روی سایت خودت عوض کن ✏️✏️✏️
+const SITE_URL = "https://Amirreza7064.github.io/RZ-Chat/index.html";
+
+function actionCodeSettings(phone) {
+  return {
+    url: SITE_URL + "?phone=" + encodeURIComponent(phone),
+    handleCodeInApp: true
+  };
+}
+
+function normalizePhone(input) {
+  let p = String(input || "").replace(/[^\d+]/g, "");
+  if (p.startsWith("+98")) p = "0" + p.slice(3);
+  else if (p.startsWith("98") && p.length === 12) p = "0" + p.slice(2);
+  else if (p.length === 10 && p.startsWith("9")) p = "0" + p;
+  return p;
+}
+
+function maskEmail(email) {
+  const parts = email.split("@");
+  return parts[0].charAt(0) + "***@" + parts[1];
+}
+
+async function createUserProfile(user, phone = "") {
   const userRef = doc(db, "users", user.uid);
   const snap = await getDoc(userRef);
   if (!snap.exists()) {
     await setDoc(userRef, {
       uid: user.uid,
       email: user.email || "",
-      phone: user.phoneNumber || "",
+      phone: phone,
       name: "کاربر جدید",
       username: "",
       bio: "",
@@ -32,7 +56,7 @@ async function createUserProfile(user) {
   }
 }
 
-/* ---------- ورود با ایمیل ---------- */
+/* ---------- تب ایمیل و رمز ---------- */
 
 window.registerUser = async function () {
   const email = document.getElementById("email").value;
@@ -57,37 +81,101 @@ window.loginUser = async function () {
   }
 };
 
-/* ---------- ورود با شماره تلفن ---------- */
+/* ---------- تب شماره تلفن (لینک ایمیل جای پیامک) ---------- */
 
-window.sendCode = async function () {
-  const phone = document.getElementById("phone").value.trim();
+window.phoneLogin = async function () {
+  const status = document.getElementById("phone-status");
+  const phone = normalizePhone(document.getElementById("phone").value);
+  const emailInput = document.getElementById("phone-email").value.trim().toLowerCase();
+
+  if (!/^09\d{9}$/.test(phone)) {
+    alert("شماره موبایل نامعتبر است. مثال: 09123456789");
+    return;
+  }
+
+  status.textContent = "در حال بررسی شماره...";
+
   try {
-    if (!window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-        size: "invisible"
-      });
+    const snap = await getDoc(doc(db, "phones", phone));
+
+    if (snap.exists()) {
+      /* ----- شماره قبلاً ثبت شده → ورود ----- */
+      const email = snap.data().email;
+
+      if (emailInput && emailInput !== email) {
+        status.textContent = "❌ این شماره با ایمیل دیگری ثبت شده: " + maskEmail(email);
+        return;
+      }
+
+      await sendSignInLinkToEmail(auth, email, actionCodeSettings(phone));
+      localStorage.setItem("emailForSignIn", email);
+      localStorage.setItem("phoneForSignIn", phone);
+      status.textContent = "✉️ لینک ورود به " + maskEmail(email) + " فرستاده شد — ایمیلت را چک کن!";
+
+    } else {
+      /* ----- شماره جدید → ثبت‌نام ----- */
+      if (!emailInput) {
+        status.textContent = "این شماره ثبت نشده؛ برای ثبت‌نام ایمیلت را هم وارد کن.";
+        return;
+      }
+
+      await sendSignInLinkToEmail(auth, emailInput, actionCodeSettings(phone));
+      localStorage.setItem("emailForSignIn", emailInput);
+      localStorage.setItem("phoneForSignIn", phone);
+      status.textContent = "✉️ لینک ثبت‌نام به " + maskEmail(emailInput) + " فرستاده شد — روی لینک کلیک کن!";
     }
-    window.confirmationResult = await signInWithPhoneNumber(
-      auth, phone, window.recaptchaVerifier
-    );
-    document.getElementById("code-section").style.display = "block";
-    alert("کد پیامک شد ✅");
-  } catch (error) {
-    console.error(error);
-    alert(error.message);
+  } catch (e) {
+    console.error(e);
+    status.textContent = "خطا! دوباره امتحان کن.";
   }
 };
 
-window.verifyCode = async function () {
-  const code = document.getElementById("code").value.trim();
+/* ---------- تکمیل خودکار ورود بعد از کلیک روی لینک ایمیل ---------- */
+
+window.addEventListener("load", async () => {
+  if (!isSignInWithEmailLink(auth, location.href)) return;
+
+  // ایمیل: اول از حافظه، اگر نبود (لینک روی دستگاه دیگر باز شده) بپرس
+  let email = localStorage.getItem("emailForSignIn") || prompt("برای تکمیل ورود، ایمیلت را وارد کن:");
+  if (!email) return;
+  email = email.trim().toLowerCase();
+
+  // شماره: اول از لینک (?phone=...)، بعد از حافظه
+  const urlPhone = new URLSearchParams(location.search).get("phone");
+  const phone = normalizePhone(urlPhone || localStorage.getItem("phoneForSignIn") || "");
+
   try {
-    const cred = await window.confirmationResult.confirm(code);
-    await createUserProfile(cred.user);
+    const cred = await signInWithEmailLink(auth, email, location.href);
+    // لینک اینجا مصرف شد → یک‌بار مصرف بود و تمام ✅
+
+    localStorage.removeItem("emailForSignIn");
+    localStorage.removeItem("phoneForSignIn");
+
+    if (phone) {
+      const phoneRef = doc(db, "phones", phone);
+      const snap = await getDoc(phoneRef);
+
+      if (!snap.exists()) {
+        // ثبت‌نام: اتصال شماره به این حساب
+        await setDoc(phoneRef, { uid: cred.user.uid, email: email });
+        await createUserProfile(cred.user, phone);
+      } else if (snap.data().uid === cred.user.uid) {
+        // ورود: شماره از قبل مال خودش است
+        await createUserProfile(cred.user, phone);
+      } else {
+        // شماره مال کاربر دیگری است
+        await signOut(auth);
+        alert("این شماره به حساب دیگری متصل است ❌");
+        return;
+      }
+    }
+
     location.href = "chats.html";
-  } catch (error) {
-    alert("کد اشتباه است ❌");
+  } catch (e) {
+    console.error(e);
+    alert("لینک نامعتبر است یا منقضی شده. دوباره امتحان کن.");
   }
-};
+});
 
 /* ---------- تب‌ها ---------- */
 
