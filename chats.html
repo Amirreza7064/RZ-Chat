@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RZ-Chat</title>
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 
@@ -78,6 +78,11 @@
         <hr class="sep">
 
         <div class="setting-row">
+            <span>🔔 اعلان پیام‌های جدید</span>
+            <button class="small-btn" onclick="askNotifPerm()">فعال‌سازی</button>
+        </div>
+
+        <div class="setting-row">
             <span>🌙 حالت شب</span>
             <label class="switch">
                 <input type="checkbox" id="dark-toggle" onchange="toggleDark(this.checked)">
@@ -113,6 +118,6 @@
 <!-- ============ منوی راست‌کلیک ============ -->
 <div id="ctx-menu"></div>
 
-<script type="module" src="chats.js?v=4"></script>
+<script type="module" src="chats.js?v=6"></script>
 </body>
 </html>
