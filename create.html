@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ساخت | RZ-Chat</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
-<div class="page-box">
+<div class="page-box" id="create-form">
     <h2 id="page-title">ساخت گروه</h2>
 
     <label>نام</label>
@@ -17,10 +17,23 @@
     <label>توضیحات</label>
     <input id="chat-desc" type="text" placeholder="اختیاری">
 
+    <label>افزودن اعضا از مخاطبین:</label>
+    <div id="member-picker" class="member-picker">
+        <p class="hint">⏳ در حال بارگذاری مخاطبین...</p>
+    </div>
+
     <button onclick="createChat()">ساخت ✨</button>
     <button class="gray" onclick="location.href='chats.html'">انصراف</button>
 </div>
 
-<script type="module" src="create.js"></script>
+<div class="page-box" id="created-box" style="display:none">
+    <h2>✅ ساخته شد!</h2>
+    <p class="hint">این لینک را برای دوستانت بفرست تا عضو شوند:</p>
+    <input id="new-invite-link" readonly onclick="this.select()">
+    <button onclick="copyNewInvite()">کپی لینک 📋</button>
+    <button class="gray" id="goto-chat-btn">برو به چت ←</button>
+</div>
+
+<script type="module" src="create.js?v=5"></script>
 </body>
 </html>
