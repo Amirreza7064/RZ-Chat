@@ -13,8 +13,9 @@ const db = getFirestore(app);
 
 let me = null;
 let myData = {};
-let chatsMap = {};     // chatId -> اطلاعات چت
-let metaMap = {};      // chatId -> سنجاق/بایگانی/خوانده‌نشده من
+let chatsMap = {};      // chatId -> اطلاعات چت
+let metaMap = {};       // chatId -> سنجاق/بایگانی/خوانده‌نشده من
+let contactsMap = {};   // uid -> اطلاعات مخاطب
 let currentView = "main"; // "main" یا "archived"
 const userCache = {};
 
@@ -113,7 +114,7 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById("dark-toggle").checked =
       localStorage.getItem("dark") === "1";
 
-    // ساخت «پیام‌های ذخیره‌شده» اگر وجود ندارد (merge → چیزی پاک نمی‌شود)
+    // ساخت «پیام‌های ذخیره‌شده» اگر وجود ندارد
     await setDoc(doc(db, "chats", "saved_" + user.uid), {
       type: "saved",
       members: [user.uid],
@@ -158,15 +159,19 @@ function listenContacts() {
 
   const q = collection(db, "users", me.uid, "contacts");
   onSnapshot(q, (snapshot) => {
+    contactsMap = {};
+
     if (snapshot.empty) {
       list.innerHTML = "<p class='empty'>مخاطبی نداری! دکمه ＋ پایین را بزن</p>";
       return;
     }
+
     let html = "";
     snapshot.forEach((docSnap) => {
       const c = docSnap.data();
+      contactsMap[docSnap.id] = c;
       html += `
-        <div class="chat-item" onclick="openPrivateChat('${docSnap.id}')">
+        <div class="chat-item" data-contact="${docSnap.id}" onclick="openPrivateChat('${docSnap.id}')">
           <div class="avatar">${avatarHTML(c)}</div>
           <div>
             <div class="chat-name">${escapeHTML(c.name)}</div>
@@ -212,7 +217,6 @@ async function render() {
     }
 
   } else {
-    // 🔖 پیام‌های ذخیره‌شده — همیشه اول
     if (saved) {
       const c = saved[1];
       html += `
@@ -225,12 +229,10 @@ async function render() {
         </div>`;
     }
 
-    // 📌 سنجاق‌شده‌ها
     for (const [id, chat] of pinned) {
       html += await itemHTML(id, chat);
     }
 
-    // 📤 پوشه بایگانی
     if (archived.length > 0) {
       html += `
         <div class="chat-item archive-row" onclick="showArchivedView()">
@@ -326,37 +328,51 @@ async function updateBadges() {
   }
 }
 
-/* ---------- منوی راست‌کلیک ---------- */
+/* ---------- منوی راست‌کلیک (چت‌ها + مخاطبین) ---------- */
 
 const ctxMenu = document.getElementById("ctx-menu");
 
 document.addEventListener("contextmenu", (e) => {
-  const item = e.target.closest("#chat-list .chat-item[data-chat]");
-  if (!item) { ctxMenu.style.display = "none"; return; }
-  e.preventDefault();
+  const chatItem = e.target.closest("#chat-list .chat-item[data-chat]");
+  const contactItem = e.target.closest("#contact-list .chat-item[data-contact]");
 
-  const id = item.getAttribute("data-chat");
-  const chat = chatsMap[id];
-  const meta = metaMap[id] || {};
-  if (!chat || chat.type === "saved") return; // برای ذخیره‌شده‌ها منو نداریم
+  if (!chatItem && !contactItem) {
+    ctxMenu.style.display = "none";
+    return;
+  }
+  e.preventDefault();
 
   let html = "";
 
-  if (!meta.archived) {
-    html += meta.pinned
-      ? `<button onclick="ctxUnpin('${id}')">📍 برداشتن سنجاق</button>`
-      : `<button onclick="ctxPin('${id}')">📌 سنجاق کردن</button>`;
+  if (contactItem) {
+    /* ----- منوی مخاطب ----- */
+    const uid = contactItem.getAttribute("data-contact");
+    html += `<button onclick="ctxRenameContact('${uid}')">✏️ تغییر نام مخاطب</button>`;
+    html += `<button class="danger" onclick="ctxRemoveContact('${uid}')">🗑 حذف از مخاطبین</button>`;
+
+  } else {
+    /* ----- منوی چت ----- */
+    const id = chatItem.getAttribute("data-chat");
+    const chat = chatsMap[id];
+    const meta = metaMap[id] || {};
+    if (!chat || chat.type === "saved") return;
+
+    if (!meta.archived) {
+      html += meta.pinned
+        ? `<button onclick="ctxUnpin('${id}')">📍 برداشتن سنجاق</button>`
+        : `<button onclick="ctxPin('${id}')">📌 سنجاق کردن</button>`;
+    }
+
+    html += meta.archived
+      ? `<button onclick="ctxUnarchive('${id}')">📤 خروج از بایگانی</button>`
+      : `<button onclick="ctxArchive('${id}')">📥 بایگانی کردن</button>`;
+
+    html += meta.markUnread
+      ? `<button onclick="ctxMarkRead('${id}')">✅ علامت‌گذاری به عنوان خوانده‌شده</button>`
+      : `<button onclick="ctxMarkUnread('${id}')">🔵 علامت‌گذاری به عنوان خوانده‌نشده</button>`;
+
+    html += `<button class="danger" onclick="ctxDelete('${id}')">🗑 حذف چت</button>`;
   }
-
-  html += meta.archived
-    ? `<button onclick="ctxUnarchive('${id}')">📤 خروج از بایگانی</button>`
-    : `<button onclick="ctxArchive('${id}')">📥 بایگانی کردن</button>`;
-
-  html += meta.markUnread
-    ? `<button onclick="ctxMarkRead('${id}')">✅ علامت‌گذاری به عنوان خوانده‌شده</button>`
-    : `<button onclick="ctxMarkUnread('${id}')">🔵 علامت‌گذاری به عنوان خوانده‌نشده</button>`;
-
-  html += `<button class="danger" onclick="ctxDelete('${id}')">🗑 حذف چت</button>`;
 
   ctxMenu.innerHTML = html;
   ctxMenu.style.display = "block";
@@ -390,6 +406,26 @@ window.ctxDelete = async function (id) {
 
   await updateDoc(doc(db, "chats", id), { members: arrayRemove(me.uid) });
   await deleteDoc(doc(db, "users", me.uid, "chatMeta", id));
+};
+
+/* ---------- تغییر نام و حذف مخاطب ---------- */
+
+window.ctxRenameContact = async function (uid) {
+  const c = contactsMap[uid];
+  if (!c) return;
+  const newName = prompt("اسم جدید برای این مخاطب:", c.name || "");
+  if (newName === null) return;
+  const name = newName.trim();
+  if (!name) {
+    alert("اسم نمی‌تواند خالی باشد");
+    return;
+  }
+  await updateDoc(doc(db, "users", me.uid, "contacts", uid), { name });
+};
+
+window.ctxRemoveContact = async function (uid) {
+  if (!confirm("این مخاطب از لیستت حذف شود؟ (چت‌هایتان پاک نمی‌شود)")) return;
+  await deleteDoc(doc(db, "users", me.uid, "contacts", uid));
 };
 
 /* ---------- ناوبری ---------- */
@@ -496,14 +532,109 @@ window.searchContact = async function () {
             <div class="chat-last">${data.username ? "@" + escapeHTML(data.username) : ""}</div>
           </div>
         </div>
+        <label class="modal-label">اسم مخاطب (دلخواه — می‌توانی عوضش کنی):</label>
+        <input id="add-name" type="text"
+            onkeydown="if(event.key === 'Enter') document.getElementById('add-btn').click()">
         <button id="add-btn">افزودن به مخاطبین ➕</button>
       </div>`;
 
+    // مقدار پیش‌فرض: اسم واقعی کاربر (با JS ست می‌شود تا کوتیشن‌ها خراب نشوند)
+    document.getElementById("add-name").value = data.name || "کاربر";
+
     document.getElementById("add-btn").onclick = async () => {
+      const customName =
+        document.getElementById("add-name").value.trim() ||
+        data.name || "کاربر";
+
       await setDoc(doc(db, "users", me.uid, "contacts", uid), {
         uid: uid,
-        name: data.name || "کاربر",
+        name: customName,
         username: data.username || "",
         photo: data.photo || ""
       });
-      resultDiv.innerHTML = "<
+      resultDiv.innerHTML = "<p class='hint ok-text'>اضافه شد ✅</p>";
+      setTimeout(closeAddContact, 800);
+    };
+  } catch (e) {
+    showErr("خطای جستجو: " + (e.code || e.message));
+  }
+};
+
+/* ---------- ذخیره پروفایل ---------- */
+
+window.saveProfile = async function () {
+  const name = document.getElementById("set-name").value.trim() || "کاربر";
+  const bio = document.getElementById("set-bio").value.trim();
+  const username = document.getElementById("set-username").value.trim().toLowerCase();
+
+  if (username && !/^[a-z0-9_]{3,20}$/.test(username)) {
+    alert("آیدی نامعتبر: ۳ تا ۲۰ کاراکتر انگلیسی، عدد یا _");
+    return;
+  }
+
+  if (username !== (myData.username || "")) {
+    if (username) {
+      const existing = await getDoc(doc(db, "usernames", username));
+      if (existing.exists()) {
+        alert("این آیدی قبلاً گرفته شده ❌");
+        return;
+      }
+      await setDoc(doc(db, "usernames", username), { uid: me.uid });
+    }
+    if (myData.username) {
+      await deleteDoc(doc(db, "usernames", myData.username));
+    }
+  }
+
+  await updateDoc(doc(db, "users", me.uid), { name, bio, username: username || "" });
+  myData = { ...myData, name, bio, username };
+
+  document.getElementById("user-name").textContent = name;
+  renderAvatar(document.getElementById("my-avatar"), myData);
+  alert("ذخیره شد ✅");
+};
+
+/* ---------- آپلود عکس ---------- */
+
+window.uploadPhoto = function (input) {
+  const file = input.files[0];
+  if (!file || !me) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = async () => {
+      try {
+        const size = 200;
+        const canvas = document.createElement("canvas");
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        const min = Math.min(img.width, img.height);
+        ctx.drawImage(
+          img,
+          (img.width - min) / 2, (img.height - min) / 2, min, min,
+          0, 0, size, size
+        );
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+
+        await updateDoc(doc(db, "users", me.uid), { photo: dataUrl });
+        myData.photo = dataUrl;
+        renderAvatar(document.getElementById("set-avatar"), myData);
+        renderAvatar(document.getElementById("my-avatar"), myData);
+        alert("عکس ذخیره شد ✅");
+      } catch (err) {
+        showErr("خطای ذخیره عکس: " + (err.code || err.message));
+      }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+
+/* ---------- حالت شب ---------- */
+
+window.toggleDark = function (on) {
+  document.body.classList.toggle("dark", on);
+  localStorage.setItem("dark", on ? "1" : "0");
+};
