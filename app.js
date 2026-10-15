@@ -14,6 +14,23 @@ let currentUser = null;
 let myName = "کاربر";
 let chatId = new URLSearchParams(location.search).get("id");
 let chatData = null;
+let isPrivate = false;
+
+if (localStorage.getItem("dark") === "1") document.body.classList.add("dark");
+
+function escapeHTML(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderAvatar(el, data) {
+  if (data && data.photo) {
+    el.innerHTML = `<img src="${data.photo}" alt="">`;
+  } else {
+    el.textContent = ((data && data.name) || "؟").charAt(0);
+  }
+}
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
@@ -38,15 +55,31 @@ onAuthStateChanged(auth, async (user) => {
   }
   chatData = chatSnap.data();
 
-  document.getElementById("chat-title").textContent = chatData.name;
-  document.getElementById("chat-icon").textContent =
-    chatData.type === "channel" ? "📢" : "👥";
-  document.getElementById("chat-sub").textContent =
-    chatData.type === "channel" ? "کانال" : "گروه";
+  if (chatData.type === "private") {
+    /* ----- چت خصوصی: نمایش مخاطب ----- */
+    isPrivate = true;
+    const otherUid = (chatData.members || []).find(u => u !== currentUser.uid);
+    const otherSnap = otherUid ? await getDoc(doc(db, "users", otherUid)) : null;
+    const other = otherSnap && otherSnap.exists() ? otherSnap.data() : { name: "کاربر" };
 
-  const isAdmin = (chatData.admins || []).includes(currentUser.uid);
-  if (chatData.type !== "channel" || isAdmin) {
+    renderAvatar(document.getElementById("chat-icon"), other);
+    document.getElementById("chat-title").textContent = other.name || "کاربر";
+    document.getElementById("chat-sub").textContent =
+      other.username ? "@" + other.username : "چت خصوصی";
     document.getElementById("send-box").style.display = "flex";
+
+  } else {
+    /* ----- گروه یا کانال ----- */
+    document.getElementById("chat-title").textContent = chatData.name;
+    document.getElementById("chat-icon").textContent =
+      chatData.type === "channel" ? "📢" : "👥";
+    document.getElementById("chat-sub").textContent =
+      chatData.type === "channel" ? "کانال" : "گروه";
+
+    const isAdmin = (chatData.admins || []).includes(currentUser.uid);
+    if (chatData.type !== "channel" || isAdmin) {
+      document.getElementById("send-box").style.display = "flex";
+    }
   }
 
   listenMessages();
@@ -55,8 +88,11 @@ onAuthStateChanged(auth, async (user) => {
 async function sendMessage() {
   if (!chatData || !currentUser) return;
 
-  const isAdmin = (chatData.admins || []).includes(currentUser.uid);
-  if (chatData.type === "channel" && !isAdmin) return;
+  // در کانال فقط ادمین (چت خصوصی و گروه آزاده)
+  if (!isPrivate && chatData.type === "channel") {
+    const isAdmin = (chatData.admins || []).includes(currentUser.uid);
+    if (!isAdmin) return;
+  }
 
   const input = document.getElementById("messageInput");
   const text = input.value.trim();
@@ -77,12 +113,6 @@ async function sendMessage() {
 
 window.sendMessage = sendMessage;
 
-function escapeHTML(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
-}
-
 function listenMessages() {
   const q = query(collection(db, "chats", chatId, "messages"), orderBy("time"));
 
@@ -97,9 +127,14 @@ function listenMessages() {
         hour: "2-digit", minute: "2-digit"
       });
 
+      // در چت خصوصی اسم نمی‌گذاریم (چون فقط دو نفرند)
+      const senderHtml = (!isMine && !isPrivate)
+        ? `<div class="sender">${escapeHTML(data.senderName || "ناشناس")}</div>`
+        : "";
+
       messagesDiv.innerHTML += `
         <div class="message ${isMine ? "mine" : ""}">
-          ${isMine ? "" : `<div class="sender">${escapeHTML(data.senderName || "ناشناس")}</div>`}
+          ${senderHtml}
           <div class="text">${escapeHTML(data.text)}</div>
           <div class="time">${time}</div>
         </div>`;
