@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore, collection, addDoc, query, orderBy, onSnapshot,
-  doc, getDoc, updateDoc
+  doc, getDoc, updateDoc, setDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { firebaseConfig } from "./firebase.js";
@@ -15,6 +15,7 @@ let myName = "کاربر";
 let chatId = new URLSearchParams(location.search).get("id");
 let chatData = null;
 let isPrivate = false;
+let isSaved = false;
 
 if (localStorage.getItem("dark") === "1") document.body.classList.add("dark");
 
@@ -30,6 +31,15 @@ function renderAvatar(el, data) {
   } else {
     el.textContent = ((data && data.name) || "؟").charAt(0);
   }
+}
+
+// علامت‌گذاری چت به عنوان خوانده‌شده
+function markAsRead() {
+  if (!currentUser || !chatId) return;
+  setDoc(doc(db, "users", currentUser.uid, "chatMeta", chatId), {
+    lastReadTime: Date.now(),
+    markUnread: false
+  }, { merge: true }).catch(() => {});
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -55,8 +65,16 @@ onAuthStateChanged(auth, async (user) => {
   }
   chatData = chatSnap.data();
 
-  if (chatData.type === "private") {
-    /* ----- چت خصوصی: نمایش مخاطب ----- */
+  if (chatData.type === "saved") {
+    /* ----- پیام‌های ذخیره‌شده ----- */
+    isSaved = true;
+    document.getElementById("chat-icon").textContent = "🔖";
+    document.getElementById("chat-title").textContent = "پیام‌های ذخیره‌شده";
+    document.getElementById("chat-sub").textContent = "فقط برای خودت";
+    document.getElementById("send-box").style.display = "flex";
+
+  } else if (chatData.type === "private") {
+    /* ----- چت خصوصی ----- */
     isPrivate = true;
     const otherUid = (chatData.members || []).find(u => u !== currentUser.uid);
     const otherSnap = otherUid ? await getDoc(doc(db, "users", otherUid)) : null;
@@ -82,14 +100,14 @@ onAuthStateChanged(auth, async (user) => {
     }
   }
 
+  markAsRead();
   listenMessages();
 });
 
 async function sendMessage() {
   if (!chatData || !currentUser) return;
 
-  // در کانال فقط ادمین (چت خصوصی و گروه آزاده)
-  if (!isPrivate && chatData.type === "channel") {
+  if (!isPrivate && !isSaved && chatData.type === "channel") {
     const isAdmin = (chatData.admins || []).includes(currentUser.uid);
     if (!isAdmin) return;
   }
@@ -105,7 +123,11 @@ async function sendMessage() {
     time: Date.now()
   });
 
-  updateDoc(doc(db, "chats", chatId), { lastMessage: text });
+  // زمان آخرین پیام → برای مرتب‌سازی لیست چت‌ها
+  updateDoc(doc(db, "chats", chatId), {
+    lastMessage: text,
+    lastMessageTime: Date.now()
+  });
 
   input.value = "";
   input.focus();
@@ -127,8 +149,7 @@ function listenMessages() {
         hour: "2-digit", minute: "2-digit"
       });
 
-      // در چت خصوصی اسم نمی‌گذاریم (چون فقط دو نفرند)
-      const senderHtml = (!isMine && !isPrivate)
+      const senderHtml = (!isMine && !isPrivate && !isSaved)
         ? `<div class="sender">${escapeHTML(data.senderName || "ناشناس")}</div>`
         : "";
 
@@ -141,5 +162,8 @@ function listenMessages() {
     });
 
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+    // تا وقتی چت باز است، همه پیام‌ها خوانده‌شده حساب می‌شوند
+    markAsRead();
   });
 }
