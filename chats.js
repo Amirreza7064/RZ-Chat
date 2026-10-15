@@ -20,7 +20,6 @@ onAuthStateChanged(auth, async (user) => {
   document.getElementById("user-name").textContent = name;
   document.getElementById("avatar").textContent = name.charAt(0);
 
-  // چت‌هایی که کاربر عضوشونه
   const q = query(
     collection(db, "chats"),
     where("members", "array-contains", user.uid)
