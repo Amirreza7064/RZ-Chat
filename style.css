@@ -51,20 +51,19 @@ body {
   font-size: 15px;
 }
 
-.login-box button:nth-of-type(1),
-.login-box button:nth-of-type(3) {
+/* دکمه اول (ثبت نام) و سومی (ورود/ثبت‌نام شماره) */
+.login-box button:nth-of-type(1) {
   background: #e8f4fb;
   color: #0088cc;
 }
 
-.login-box button:nth-of-type(2),
-.login-box button:nth-of-type(4) {
+/* دکمه دوم (ورود) */
+.login-box button:nth-of-type(2) {
   background: #0088cc;
   color: white;
 }
 
-/* تب‌های صفحه ورود */
-
+/* تب‌ها */
 .tabs {
   display: flex;
   gap: 8px;
@@ -84,6 +83,13 @@ body {
 .tabs .tab.active {
   background: #0088cc;
   color: white;
+}
+
+.hint {
+  font-size: 12px;
+  color: #777;
+  margin-bottom: 12px;
+  line-height: 1.8;
 }
 
 /* ================= صفحه‌های فرم (پروفایل/ساخت) ================= */
@@ -202,6 +208,7 @@ body {
   align-items: center;
   justify-content: center;
   font-weight: bold;
+  color: inherit;
 }
 
 .header h1 {
@@ -303,7 +310,6 @@ body {
   width: fit-content;
 }
 
-/* پیام‌های خودم — آبی */
 .message.mine {
   background: linear-gradient(135deg, #0088cc, #22a5e0);
   color: white;
