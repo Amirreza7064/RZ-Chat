@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getFirestore, collection, addDoc, query, orderBy, onSnapshot,
-  doc, getDoc, updateDoc, setDoc
+  doc, getDoc, updateDoc, setDoc, arrayUnion
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { firebaseConfig } from "./firebase.js";
@@ -33,7 +33,6 @@ function renderAvatar(el, data) {
   }
 }
 
-// علامت‌گذاری چت به عنوان خوانده‌شده
 function markAsRead() {
   if (!currentUser || !chatId) return;
   setDoc(doc(db, "users", currentUser.uid, "chatMeta", chatId), {
@@ -65,18 +64,29 @@ onAuthStateChanged(auth, async (user) => {
   }
   chatData = chatSnap.data();
 
+  const members = chatData.members || [];
+
+  /* ---------- پیام‌های ذخیره‌شده ---------- */
   if (chatData.type === "saved") {
-    /* ----- پیام‌های ذخیره‌شده ----- */
     isSaved = true;
     document.getElementById("chat-icon").textContent = "🔖";
     document.getElementById("chat-title").textContent = "پیام‌های ذخیره‌شده";
     document.getElementById("chat-sub").textContent = "فقط برای خودت";
     document.getElementById("send-box").style.display = "flex";
+    markAsRead();
+    listenMessages();
+    return;
+  }
 
-  } else if (chatData.type === "private") {
-    /* ----- چت خصوصی ----- */
+  /* ---------- چت خصوصی ---------- */
+  if (chatData.type === "private") {
     isPrivate = true;
-    const otherUid = (chatData.members || []).find(u => u !== currentUser.uid);
+    if (!members.includes(currentUser.uid)) {
+      alert("این چت مال تو نیست ❌");
+      location.href = "chats.html";
+      return;
+    }
+    const otherUid = members.find(u => u !== currentUser.uid);
     const otherSnap = otherUid ? await getDoc(doc(db, "users", otherUid)) : null;
     const other = otherSnap && otherSnap.exists() ? otherSnap.data() : { name: "کاربر" };
 
@@ -85,24 +95,79 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById("chat-sub").textContent =
       other.username ? "@" + other.username : "چت خصوصی";
     document.getElementById("send-box").style.display = "flex";
+    markAsRead();
+    listenMessages();
+    return;
+  }
 
+  /* ---------- گروه یا کانال ---------- */
+  const isMember = members.includes(currentUser.uid);
+  const isAdmin = (chatData.admins || []).includes(currentUser.uid);
+
+  document.getElementById("chat-title").textContent = chatData.name;
+  document.getElementById("chat-icon").textContent =
+    chatData.type === "channel" ? "📢" : "👥";
+  document.getElementById("chat-sub").textContent =
+    chatData.type === "channel" ? "کانال" : "گروه";
+
+  if (!isMember) {
+    /* ----- غیرعضو: نمایش نوار عضویت (پیش‌نمایش پیام‌ها مثل تلگرام) ----- */
+    const bar = document.getElementById("join-bar");
+    document.getElementById("join-text").textContent =
+      chatData.type === "channel"
+        ? "برای دنبال کردن این کانال عضو شو:"
+        : "برای ارسال پیام در این گروه عضو شو:";
+    bar.style.display = "flex";
   } else {
-    /* ----- گروه یا کانال ----- */
-    document.getElementById("chat-title").textContent = chatData.name;
-    document.getElementById("chat-icon").textContent =
-      chatData.type === "channel" ? "📢" : "👥";
-    document.getElementById("chat-sub").textContent =
-      chatData.type === "channel" ? "کانال" : "گروه";
-
-    const isAdmin = (chatData.admins || []).includes(currentUser.uid);
+    /* ----- عضو ----- */
     if (chatData.type !== "channel" || isAdmin) {
       document.getElementById("send-box").style.display = "flex";
     }
+    // دکمه دعوت برای همه اعضا
+    document.getElementById("invite-btn").style.display = "inline-block";
   }
 
   markAsRead();
   listenMessages();
 });
+
+/* ---------- عضویت از طریق لینک ---------- */
+
+window.joinChat = async function () {
+  if (!currentUser || !chatData) return;
+  try {
+    await updateDoc(doc(db, "chats", chatId), {
+      members: arrayUnion(currentUser.uid)
+    });
+    location.reload(); // بعد از عضویت، صفحه به حالت عادی باز می‌شود
+  } catch (e) {
+    console.error(e);
+    alert("عضویت ناموفق بود");
+  }
+};
+
+/* ---------- مودال دعوت ---------- */
+
+window.openInvite = function () {
+  const input = document.getElementById("invite-link");
+  input.value =
+    location.origin + location.pathname + "?id=" + chatId;
+  document.getElementById("invite-modal").classList.add("show");
+};
+
+window.closeInvite = function () {
+  document.getElementById("invite-modal").classList.remove("show");
+};
+
+window.copyInvite = function () {
+  const input = document.getElementById("invite-link");
+  input.select();
+  navigator.clipboard.writeText(input.value)
+    .then(() => alert("کپی شد ✅"))
+    .catch(() => document.execCommand("copy"));
+};
+
+/* ---------- ارسال پیام ---------- */
 
 async function sendMessage() {
   if (!chatData || !currentUser) return;
@@ -123,7 +188,6 @@ async function sendMessage() {
     time: Date.now()
   });
 
-  // زمان آخرین پیام → برای مرتب‌سازی لیست چت‌ها
   updateDoc(doc(db, "chats", chatId), {
     lastMessage: text,
     lastMessageTime: Date.now()
@@ -162,8 +226,6 @@ function listenMessages() {
     });
 
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-    // تا وقتی چت باز است، همه پیام‌ها خوانده‌شده حساب می‌شوند
     markAsRead();
   });
 }
