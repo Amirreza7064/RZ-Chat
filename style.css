@@ -51,19 +51,16 @@ body {
   font-size: 15px;
 }
 
-/* دکمه اول (ثبت نام) و سومی (ورود/ثبت‌نام شماره) */
 .login-box button:nth-of-type(1) {
   background: #e8f4fb;
   color: #0088cc;
 }
 
-/* دکمه دوم (ورود) */
 .login-box button:nth-of-type(2) {
   background: #0088cc;
   color: white;
 }
 
-/* تب‌ها */
 .tabs {
   display: flex;
   gap: 8px;
@@ -92,31 +89,133 @@ body {
   line-height: 1.8;
 }
 
-/* ================= صفحه‌های فرم (پروفایل/ساخت) ================= */
+.ok-text { color: green; }
 
-.page-box {
-  width: 340px;
-  margin: 60px auto;
+/* ================= تب‌های صفحه اصلی ================= */
+
+.tab-page { display: none; }
+.tab-page.active { display: block; }
+
+/* دکمه شناور ＋ */
+.fab {
+  position: fixed;
+  bottom: 25px;
+  left: 25px;
+  width: 60px;
+  height: 60px;
+  border: none;
+  border-radius: 50%;
+  background: #0088cc;
+  color: white;
+  font-size: 30px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 136, 204, 0.45);
+  z-index: 50;
+  transition: 0.2s;
+}
+
+.fab:hover {
+  transform: scale(1.08);
+  background: #0077b5;
+}
+
+/* دکمه‌های گروه/کانال داخل مخاطبین */
+.contact-actions {
+  display: flex;
+  gap: 10px;
+  padding: 12px 15px;
+}
+
+.contact-actions button {
+  flex: 1;
+  padding: 11px;
+  border: none;
+  border-radius: 10px;
   background: white;
-  padding: 30px;
-  border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-}
-
-.page-box h2 {
   color: #0088cc;
-  text-align: center;
-  margin-bottom: 15px;
+  font-family: tahoma;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
-.page-box label {
+/* ================= مودال افزودن مخاطب ================= */
+
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 15px;
+}
+
+.modal-overlay.show { display: flex; }
+
+.modal {
+  width: 100%;
+  max-width: 360px;
+  background: white;
+  border-radius: 16px;
+  padding: 25px;
+}
+
+.modal h3 {
+  color: #0088cc;
+  margin-bottom: 8px;
+}
+
+.modal input {
+  width: 100%;
+  padding: 11px;
+  margin-bottom: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+  font-family: tahoma;
+}
+
+.modal input:focus { border-color: #0088cc; }
+
+.modal button {
+  width: 100%;
+  padding: 11px;
+  margin-top: 6px;
+  border: none;
+  border-radius: 8px;
+  background: #0088cc;
+  color: white;
+  font-family: tahoma;
+  cursor: pointer;
+}
+
+.modal button.gray {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.found-user .chat-item { cursor: default; }
+
+/* ================= تنظیمات ================= */
+
+.settings-box {
+  max-width: 420px;
+  margin: 20px auto;
+  background: white;
+  padding: 25px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+.settings-box label {
   display: block;
   font-size: 13px;
   color: #555;
   margin: 12px 0 5px;
 }
 
-.page-box input {
+.settings-box input {
   width: 100%;
   padding: 11px;
   border: 1px solid #ddd;
@@ -125,38 +224,122 @@ body {
   font-family: tahoma;
 }
 
-.page-box input:focus {
-  border-color: #0088cc;
-}
+.settings-box input:focus { border-color: #0088cc; }
 
-.page-box button {
+.settings-box button {
   width: 100%;
   padding: 12px;
   margin-top: 12px;
   border: none;
   border-radius: 8px;
-  cursor: pointer;
   background: #0088cc;
   color: white;
   font-family: tahoma;
+  cursor: pointer;
 }
 
-.page-box button.gray {
+.settings-box button.gray {
   background: #e0e0e0;
   color: #333;
 }
 
-.page-box button.small-btn {
+.settings-box button.small-btn {
   background: #e8f4fb;
   color: #0088cc;
-  padding: 8px;
+  padding: 8px 16px;
+  width: auto;
+}
+
+.avatar-edit {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.sep {
+  border: none;
+  border-top: 1px solid #eee;
+  margin: 20px 0;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  font-size: 14px;
+}
+
+.setting-row.info { font-size: 13px; }
+
+.muted {
+  color: #999;
+  font-size: 12px;
+}
+
+/* سوییچ روشن/خاموش */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+}
+
+.switch input { display: none; }
+
+.slider {
+  position: absolute;
+  inset: 0;
+  background: #ccc;
+  border-radius: 26px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.slider:before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  right: 3px;
+  top: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.2s;
+}
+
+.switch input:checked + .slider { background: #0088cc; }
+.switch input:checked + .slider:before { transform: translateX(-22px); }
+
+/* ================= آواتار ================= */
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: inherit;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .avatar.big {
-  width: 70px;
-  height: 70px;
-  font-size: 30px;
+  width: 80px;
+  height: 80px;
+  font-size: 32px;
   margin: 0 auto 10px;
+  background: #e8f4fb;
+  color: #0088cc;
 }
 
 .username-field {
@@ -170,19 +353,7 @@ body {
   color: #0088cc;
 }
 
-.ok {
-  color: green;
-  font-size: 13px;
-  margin-top: 5px;
-}
-
-.error {
-  color: red;
-  font-size: 13px;
-  margin-top: 5px;
-}
-
-/* ================= هدر (همه صفحه‌ها) ================= */
+/* ================= هدر ================= */
 
 .header {
   background: linear-gradient(135deg, #0088cc, #006daa);
@@ -199,21 +370,7 @@ body {
   gap: 12px;
 }
 
-.avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  color: inherit;
-}
-
-.header h1 {
-  font-size: 18px;
-}
+.header h1 { font-size: 18px; }
 
 #user-name {
   font-size: 12px;
@@ -234,29 +391,9 @@ body {
   background: rgba(255, 255, 255, 0.35);
 }
 
-/* ================= لیست چت‌ها ================= */
+/* ================= لیست چت‌ها و مخاطبین ================= */
 
-.actions {
-  display: flex;
-  gap: 10px;
-  padding: 12px 15px;
-}
-
-.actions button {
-  flex: 1;
-  padding: 11px;
-  border: none;
-  border-radius: 10px;
-  background: white;
-  color: #0088cc;
-  font-family: tahoma;
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
-}
-
-#chat-list {
-  padding: 10px 15px;
-}
+#chat-list, #contact-list { padding: 10px 15px; }
 
 .chat-item {
   display: flex;
@@ -271,13 +408,14 @@ body {
   transition: 0.15s;
 }
 
-.chat-item:hover {
-  transform: translateX(-3px);
+.chat-item:hover { transform: translateX(-3px); }
+
+.chat-item .avatar {
+  background: #e8f4fb;
+  color: #0088cc;
 }
 
-.chat-name {
-  font-weight: bold;
-}
+.chat-name { font-weight: bold; }
 
 .chat-last {
   font-size: 12px;
@@ -364,6 +502,126 @@ body {
   cursor: pointer;
 }
 
-.send-box button:hover {
-  background: #0077b5;
+.send-box button:hover { background: #0077b5; }
+
+/* ================= صفحه‌های فرم (ساخت گروه/کانال) ================= */
+
+.page-box {
+  width: 340px;
+  margin: 60px auto;
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.page-box h2 {
+  color: #0088cc;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.page-box label {
+  display: block;
+  font-size: 13px;
+  color: #555;
+  margin: 12px 0 5px;
+}
+
+.page-box input {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+  font-family: tahoma;
+}
+
+.page-box input:focus { border-color: #0088cc; }
+
+.page-box button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #0088cc;
+  color: white;
+  font-family: tahoma;
+}
+
+.page-box button.gray {
+  background: #e0e0e0;
+  color: #333;
+}
+
+/* ================= 🌙 حالت شب ================= */
+
+body.dark { background: #0e1621; }
+
+body.dark .header {
+  background: linear-gradient(135deg, #1f2c3a, #17212b);
+}
+
+body.dark .chat-item,
+body.dark .contact-actions button,
+body.dark .settings-box,
+body.dark .modal {
+  background: #17212b;
+  color: #e8eef5;
+}
+
+body.dark .chat-item { box-shadow: none; }
+body.dark .chat-item .avatar { background: #242f3d; color: #5eb5f7; }
+
+body.dark .chat-last,
+body.dark .muted,
+body.dark .empty,
+body.dark .hint { color: #7d8e9e; }
+
+body.dark .settings-box label { color: #8fa4b8; }
+
+body.dark .settings-box input,
+body.dark .modal input {
+  background: #242f3d;
+  border-color: #2b3a4a;
+  color: #e8eef5;
+}
+
+body.dark .sep { border-top-color: #2b3a4a; }
+
+body.dark .settings-box button.small-btn {
+  background: #242f3d;
+  color: #5eb5f7;
+}
+
+body.dark .modal button.gray,
+body.dark .settings-box button.gray {
+  background: #242f3d;
+  color: #c5d3de;
+}
+
+body.dark .message {
+  background: #182533;
+  color: #e8eef5;
+  box-shadow: none;
+}
+
+body.dark .message.mine {
+  background: linear-gradient(135deg, #2b5278, #2b6da8);
+  color: white;
+}
+
+body.dark .sender { color: #5eb5f7; }
+
+body.dark .send-box { background: #17212b; }
+
+body.dark .send-box input {
+  background: #242f3d;
+  color: #e8eef5;
+}
+
+body.dark .fab {
+  background: #2b6da8;
 }
