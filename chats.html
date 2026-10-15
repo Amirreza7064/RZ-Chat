@@ -8,23 +8,107 @@
 </head>
 <body>
 
-<header class="header">
-    <div class="header-info" onclick="location.href='profile.html'" style="cursor:pointer">
-        <div class="avatar" id="avatar">؟</div>
-        <div>
-            <h1>RZ-Chat</h1>
-            <span id="user-name"></span>
+<!-- ============ تب چت‌ها ============ -->
+<section id="tab-chats" class="tab-page active">
+    <header class="header">
+        <div class="header-info">
+            <div class="avatar" id="my-avatar" onclick="showTab('settings')" style="cursor:pointer">؟</div>
+            <div>
+                <h1>RZ-Chat</h1>
+                <span id="user-name"></span>
+            </div>
         </div>
+        <button id="logout-btn" onclick="logout()">خروج</button>
+    </header>
+
+    <div id="chat-list"></div>
+
+    <button class="fab" onclick="showTab('contacts')" title="مخاطبین">＋</button>
+</section>
+
+<!-- ============ تب مخاطبین ============ -->
+<section id="tab-contacts" class="tab-page">
+    <header class="header">
+        <div class="header-info">
+            <div class="avatar" onclick="showTab('chats')" style="cursor:pointer">→</div>
+            <div><h1>مخاطبین</h1></div>
+        </div>
+    </header>
+
+    <div class="contact-actions">
+        <button onclick="location.href='create.html?type=group'">👥 ساخت گروه</button>
+        <button onclick="location.href='create.html?type=channel'">📢 ساخت کانال</button>
     </div>
-    <button id="logout-btn" onclick="logout()">خروج</button>
-</header>
 
-<div class="actions">
-    <button onclick="location.href='create.html?type=group'">👥 گروه جدید</button>
-    <button onclick="location.href='create.html?type=channel'">📢 کانال جدید</button>
+    <div id="contact-list"></div>
+
+    <button class="fab" onclick="openAddContact()" title="افزودن مخاطب">＋</button>
+</section>
+
+<!-- ============ تب تنظیمات ============ -->
+<section id="tab-settings" class="tab-page">
+    <header class="header">
+        <div class="header-info">
+            <div class="avatar" onclick="showTab('chats')" style="cursor:pointer">→</div>
+            <div><h1>تنظیمات</h1></div>
+        </div>
+    </header>
+
+    <div class="settings-box">
+        <div class="avatar-edit">
+            <div class="avatar big" id="set-avatar" onclick="document.getElementById('photo-input').click()" style="cursor:pointer">؟</div>
+            <button class="small-btn" onclick="document.getElementById('photo-input').click()">📷 تغییر عکس پروفایل</button>
+            <input type="file" id="photo-input" accept="image/*" style="display:none" onchange="uploadPhoto(this)">
+        </div>
+
+        <label>نام نمایشی</label>
+        <input id="set-name" type="text">
+
+        <label>آیدی (حروف انگلیسی، عدد و _)</label>
+        <div class="username-field">
+            <span>@</span>
+            <input id="set-username" type="text" placeholder="username">
+        </div>
+
+        <label>بیوگرافی</label>
+        <input id="set-bio" type="text" placeholder="درباره من...">
+
+        <button onclick="saveProfile()">💾 ذخیره پروفایل</button>
+
+        <hr class="sep">
+
+        <div class="setting-row">
+            <span>🌙 حالت شب</span>
+            <label class="switch">
+                <input type="checkbox" id="dark-toggle" onchange="toggleDark(this.checked)">
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="setting-row info">
+            <span>📧 ایمیل حساب</span>
+            <span id="info-email" class="muted"></span>
+        </div>
+        <div class="setting-row info">
+            <span>📱 شماره</span>
+            <span id="info-phone" class="muted"></span>
+        </div>
+
+        <button class="gray" onclick="logout()">🚪 خروج از حساب</button>
+    </div>
+</section>
+
+<!-- ============ مودال افزودن مخاطب ============ -->
+<div id="add-modal" class="modal-overlay" onclick="if(event.target===this) closeAddContact()">
+    <div class="modal">
+        <h3>افزودن مخاطب</h3>
+        <p class="hint">با @آیدی، ایمیل یا شماره تلفن جستجو کن</p>
+        <input id="add-query" type="text" placeholder="@username یا email یا 09123456789"
+            onkeydown="if(event.key === 'Enter') searchContact()">
+        <div id="add-result"></div>
+        <button class="gray" onclick="closeAddContact()">بستن</button>
+    </div>
 </div>
-
-<div id="chat-list"></div>
 
 <script type="module" src="chats.js"></script>
 </body>
