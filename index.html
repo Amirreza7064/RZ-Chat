@@ -3,34 +3,40 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RZ-Chat</title>
+<title>RZ-Chat Login</title>
 
 <link rel="stylesheet" href="style.css">
 
 </head>
 <body>
 
-<div class="header">
-    <h1>RZ-Chat</h1>
+<div class="login-box">
+
+<h2>RZ-Chat</h2>
+
+<input
+id="email"
+type="email"
+placeholder="ایمیل"
+>
+
+<input
+id="password"
+type="password"
+placeholder="رمز عبور"
+>
+
+<button onclick="registerUser()">
+ثبت نام
+</button>
+
+<button onclick="loginUser()">
+ورود
+</button>
+
 </div>
 
-<div id="messages"></div>
-
-<div class="send-box">
-
-    <input
-        type="text"
-        id="messageInput"
-        placeholder="پیام خود را بنویس..."
-    >
-
-    <button onclick="sendMessage()">
-        ارسال
-    </button>
-
-</div>
-
-<script type="module" src="app.js"></script>
+login.jsscript>
 
 </body>
 </html>
