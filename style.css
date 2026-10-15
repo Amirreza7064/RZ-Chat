@@ -1,5 +1,5 @@
 /* ============================================================
-   RZ-Chat — استایل کامل (v5)
+   RZ-Chat — استایل کامل (v6)
    ============================================================ */
 
 * {
@@ -207,7 +207,7 @@ body {
 
 .found-user .chat-item { cursor: default; }
 
-/* ================= پیک انتخاب اعضا (ساخت گروه) ================= */
+/* ================= پیک انتخاب اعضا ================= */
 
 .member-picker {
   max-height: 220px;
@@ -528,7 +528,6 @@ body {
   color: #999;
 }
 
-/* 🔵 بج دایره‌ای تلگرامی */
 .badge {
   background: #0088cc;
   color: #fff;
@@ -565,7 +564,7 @@ body {
   background: #eef6fb;
 }
 
-/* ----- منوی راست‌کلیک ----- */
+/* ----- منوی راست‌کلیک چت‌ها ----- */
 
 #ctx-menu {
   position: fixed;
@@ -725,6 +724,140 @@ body {
   color: #333;
 }
 
+/* ================= v6: عکس، صدا، پروفایل چت، منوی پیام ================= */
+
+.msg-img {
+  max-width: 260px;
+  border-radius: 10px;
+  display: block;
+  cursor: zoom-in;
+  margin-bottom: 4px;
+}
+
+.voice-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.voice-row audio { height: 36px; max-width: 220px; }
+
+.voice-ic { font-size: 18px; }
+
+.voice-dur { font-size: 11px; opacity: 0.7; }
+
+.deleted-msg {
+  color: #999;
+  font-style: italic;
+  font-size: 13px;
+}
+
+.edited { font-size: 9px; }
+
+.tool-btn {
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: #f0f2f5;
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tool-btn:hover { background: #e2e6ea; }
+
+.rec-box { justify-content: flex-start; }
+
+.rec-dot {
+  width: 12px;
+  height: 12px;
+  background: #e74c3c;
+  border-radius: 50%;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink { 50% { opacity: 0.2; } }
+
+#rec-time { font-weight: bold; min-width: 40px; }
+
+.rec-label { flex: 1; font-size: 13px; color: #777; }
+
+.rec-ok, .rec-cancel {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.rec-ok { background: #0088cc; color: white; }
+.rec-cancel { background: #f0f2f5; }
+
+.members-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 5px;
+}
+
+.member-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+}
+
+.member-line .avatar {
+  width: 34px;
+  height: 34px;
+  background: #e8f4fb;
+  color: #0088cc;
+}
+
+.member-mid { flex: 1; min-width: 0; }
+
+.member-mid .chat-name { font-size: 13px; }
+.member-mid .chat-last { margin-top: 0; }
+
+.crown { font-size: 14px; }
+
+.mini-danger {
+  background: none;
+  border: none;
+  color: #c0392b;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+#msg-menu {
+  position: fixed;
+  display: none;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  z-index: 300;
+  min-width: 180px;
+  overflow: hidden;
+}
+
+#msg-menu button {
+  display: block;
+  width: 100%;
+  text-align: right;
+  padding: 11px 16px;
+  border: none;
+  background: none;
+  font-family: tahoma;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#msg-menu button:hover { background: #e8f4fb; }
+#msg-menu button.danger { color: #c0392b; }
+
 /* ============================================================
    🌙 حالت شب
    ============================================================ */
@@ -839,3 +972,13 @@ body.dark #ctx-menu {
 body.dark #ctx-menu button { color: #e8eef5; }
 body.dark #ctx-menu button:hover { background: #242f3d; }
 body.dark #ctx-menu button.danger { color: #e74c3c; }
+
+body.dark .tool-btn { background: #242f3d; }
+body.dark .rec-cancel { background: #242f3d; color: #e8eef5; }
+body.dark .rec-label { color: #7d8e9e; }
+body.dark .members-list { border-color: #2b3a4a; }
+body.dark .member-line .avatar { background: #242f3d; color: #5eb5f7; }
+body.dark #msg-menu { background: #17212b; box-shadow: 0 8px 30px rgba(0,0,0,.6); }
+body.dark #msg-menu button { color: #e8eef5; }
+body.dark #msg-menu button:hover { background: #242f3d; }
+body.dark #msg-menu button.danger { color: #e74c3c; }
