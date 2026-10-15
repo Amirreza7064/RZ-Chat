@@ -37,7 +37,6 @@ window.checkUsername = async function () {
     return false;
   }
 
-  // اگه آیدی رو تغییر نداده، همون قبول
   if (username === (currentData.username || "")) return true;
 
   const existing = await getDoc(doc(db, "usernames", username));
@@ -59,7 +58,6 @@ window.saveProfile = async function () {
 
   if (!(await window.checkUsername())) return;
 
-  // اگه آیدی عوض شد، قبلی رو آزاد کن
   if (username !== (currentData.username || "")) {
     if (currentData.username) {
       await deleteDoc(doc(db, "usernames", currentData.username));
