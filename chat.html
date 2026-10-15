@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RZ-Chat</title>
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 </head>
 <body>
 
 <header class="header">
-    <div class="header-info">
+    <div class="header-info" id="chat-header">
         <div class="avatar" id="chat-icon">👥</div>
         <div>
             <h1 id="chat-title">RZ-Chat</h1>
@@ -18,12 +18,11 @@
     </div>
     <div class="header-actions">
         <button id="invite-btn" class="hdr-btn" style="display:none"
-            onclick="openInvite()">🔗 دعوت</button>
+            onclick="openInfo()">🔗 دعوت</button>
         <button id="logout-btn" onclick="location.href='chats.html'">بازگشت</button>
     </div>
 </header>
 
-<!-- نوار عضویت (فقط برای غیرعضوها نمایان می‌شود) -->
 <div id="join-bar" class="join-bar" style="display:none">
     <span id="join-text"></span>
     <button onclick="joinChat()">عضویت ➕</button>
@@ -32,22 +31,63 @@
 <div id="messages"></div>
 
 <div class="send-box" id="send-box" style="display:none">
+    <input type="file" id="img-input" accept="image/*" style="display:none" onchange="sendImage(this)">
+    <button class="tool-btn" onclick="document.getElementById('img-input').click()" title="عکس">📷</button>
+    <button class="tool-btn" id="mic-btn" onclick="startRecording()" title="پیام صوتی">🎤</button>
     <input id="messageInput" type="text" placeholder="پیام..."
         onkeydown="if(event.key === 'Enter') sendMessage()">
     <button onclick="sendMessage()">➤</button>
 </div>
 
-<!-- مودال لینک دعوت -->
-<div id="invite-modal" class="modal-overlay" onclick="if(event.target===this) closeInvite()">
+<div class="send-box rec-box" id="rec-box" style="display:none">
+    <span class="rec-dot"></span>
+    <span id="rec-time">0:00</span>
+    <span class="rec-label">در حال ضبط... (حداکثر ۶۰ ثانیه)</span>
+    <button class="rec-ok" onclick="stopRecording(true)" title="ارسال">✅</button>
+    <button class="rec-cancel" onclick="stopRecording(false)" title="لغو">✖</button>
+</div>
+
+<div id="info-modal" class="modal-overlay" onclick="if(event.target===this) closeInfo()">
     <div class="modal">
-        <h3>لینک دعوت</h3>
-        <p class="hint">هر کس این لینک را باز کند، عضو می‌شود:</p>
-        <input id="invite-link" readonly onclick="this.select()">
-        <button onclick="copyInvite()">کپی لینک 📋</button>
-        <button class="gray" onclick="closeInvite()">بستن</button>
+        <h3 id="info-modal-title">اطلاعات چت</h3>
+
+        <div class="avatar-edit">
+            <div class="avatar big" id="info-avatar">👥</div>
+            <input type="file" id="chat-photo-input" accept="image/*" style="display:none" onchange="uploadChatPhoto(this)">
+        </div>
+
+        <label>نام</label>
+        <input id="info-name" type="text">
+        <label>توضیحات</label>
+        <input id="info-desc" type="text">
+
+        <div id="info-admin-tools" style="display:none">
+            <button onclick="saveChatInfo()">💾 ذخیره تغییرات</button>
+        </div>
+
+        <hr class="sep">
+
+        <label>اعضا:</label>
+        <div id="members-list" class="members-list"></div>
+
+        <div id="add-member-sec" style="display:none">
+            <label>افزودن عضو (با @آیدی، ایمیل یا شماره):</label>
+            <input id="add-member-q" type="text"
+                onkeydown="if(event.key === 'Enter') addMember()">
+            <button onclick="addMember()">افزودن ➕</button>
+        </div>
+
+        <hr class="sep">
+
+        <label>لینک دعوت:</label>
+        <input id="info-invite" readonly onclick="this.select()">
+        <button onclick="copyInfoInvite()">کپی 📋</button>
+        <button class="gray" onclick="closeInfo()">بستن</button>
     </div>
 </div>
 
-<script type="module" src="app.js?v=5"></script>
+<div id="msg-menu"></div>
+
+<script type="module" src="app.js?v=6"></script>
 </body>
 </html>
