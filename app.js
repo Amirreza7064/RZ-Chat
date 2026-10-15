@@ -44,7 +44,6 @@ onAuthStateChanged(auth, async (user) => {
   document.getElementById("chat-sub").textContent =
     chatData.type === "channel" ? "کانال" : "گروه";
 
-  // در کانال فقط ادمین جعبه ارسال رو می‌بینه
   const isAdmin = (chatData.admins || []).includes(currentUser.uid);
   if (chatData.type !== "channel" || isAdmin) {
     document.getElementById("send-box").style.display = "flex";
@@ -56,7 +55,6 @@ onAuthStateChanged(auth, async (user) => {
 async function sendMessage() {
   if (!chatData || !currentUser) return;
 
-  // امنیت: در کانال فقط ادمین اجازه ارسال داره
   const isAdmin = (chatData.admins || []).includes(currentUser.uid);
   if (chatData.type === "channel" && !isAdmin) return;
 
@@ -71,7 +69,6 @@ async function sendMessage() {
     time: Date.now()
   });
 
-  // برای نمایش آخرین پیام در لیست چت‌ها
   updateDoc(doc(db, "chats", chatId), { lastMessage: text });
 
   input.value = "";
@@ -80,7 +77,6 @@ async function sendMessage() {
 
 window.sendMessage = sendMessage;
 
-// جلوگیری از حملات XSS
 function escapeHTML(str) {
   const div = document.createElement("div");
   div.textContent = str;
@@ -109,7 +105,6 @@ function listenMessages() {
         </div>`;
     });
 
-    // اسکرول خودکار به آخرین پیام
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
   });
 }
