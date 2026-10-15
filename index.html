@@ -24,16 +24,15 @@
     </div>
 
     <div id="phone-tab" style="display:none">
-        <input id="phone" type="tel" placeholder="+989123456789">
-        <button onclick="sendCode()">ارسال کد</button>
-
-        <div id="code-section" style="display:none">
-            <input id="code" type="text" placeholder="کد ۶ رقمی">
-            <button onclick="verifyCode()">تأیید</button>
-        </div>
+        <p class="hint">
+            شماره‌ات آیدی حسابت می‌شود. برای تأیید، یک لینک ورود به
+            ایمیلت فرستاده می‌شود — بدون پیامک و بدون رمز عبور 🆓
+        </p>
+        <input id="phone" type="tel" placeholder="09123456789">
+        <input id="phone-email" type="email" placeholder="Email (فقط هنگام ثبت‌نام)">
+        <button onclick="phoneLogin()">ورود / ثبت‌نام</button>
+        <p id="phone-status" class="hint"></p>
     </div>
-
-    <div id="recaptcha-container"></div>
 </div>
 
 <script type="module" src="login.js"></script>
