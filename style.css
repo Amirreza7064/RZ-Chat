@@ -1,3 +1,7 @@
+/* ============================================================
+   RZ-Chat — استایل کامل
+   ============================================================ */
+
 * {
   margin: 0;
   padding: 0;
@@ -193,6 +197,14 @@ body {
 .modal button.gray {
   background: #e0e0e0;
   color: #333;
+}
+
+.modal-label {
+  display: block;
+  font-size: 12px;
+  color: #555;
+  margin: 10px 0 5px;
+  text-align: right;
 }
 
 .found-user .chat-item { cursor: default; }
@@ -429,6 +441,99 @@ body {
   margin-top: 40px;
 }
 
+/* ----- سنجاق، بایگانی، بج، زمان ----- */
+
+.chat-mid {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-mid .chat-last {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.chat-time {
+  font-size: 10px;
+  color: #999;
+}
+
+.badge {
+  background: #0088cc;
+  color: #fff;
+  font-size: 11px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  background: #0088cc;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.pin-ic {
+  font-size: 11px;
+  margin-left: 4px;
+}
+
+.saved-row .avatar {
+  background: #fff3cd;
+}
+
+.archive-row {
+  background: #eef6fb;
+}
+
+/* ----- منوی راست‌کلیک ----- */
+
+#ctx-menu {
+  position: fixed;
+  display: none;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  z-index: 300;
+  min-width: 230px;
+  overflow: hidden;
+}
+
+#ctx-menu button {
+  display: block;
+  width: 100%;
+  text-align: right;
+  padding: 11px 16px;
+  border: none;
+  background: none;
+  font-family: tahoma;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#ctx-menu button:hover {
+  background: #e8f4fb;
+}
+
+#ctx-menu button.danger {
+  color: #c0392b;
+}
+
 /* ================= صفحه چت ================= */
 
 #messages {
@@ -556,7 +661,9 @@ body {
   color: #333;
 }
 
-/* ================= 🌙 حالت شب ================= */
+/* ============================================================
+   🌙 حالت شب
+   ============================================================ */
 
 body.dark { background: #0e1621; }
 
@@ -567,7 +674,9 @@ body.dark .header {
 body.dark .chat-item,
 body.dark .contact-actions button,
 body.dark .settings-box,
-body.dark .modal {
+body.dark .modal,
+body.dark .page-box,
+body.dark .login-box {
   background: #17212b;
   color: #e8eef5;
 }
@@ -578,15 +687,30 @@ body.dark .chat-item .avatar { background: #242f3d; color: #5eb5f7; }
 body.dark .chat-last,
 body.dark .muted,
 body.dark .empty,
-body.dark .hint { color: #7d8e9e; }
+body.dark .hint,
+body.dark .chat-time { color: #7d8e9e; }
 
-body.dark .settings-box label { color: #8fa4b8; }
+body.dark .settings-box label,
+body.dark .page-box label,
+body.dark .modal-label { color: #8fa4b8; }
 
 body.dark .settings-box input,
-body.dark .modal input {
+body.dark .modal input,
+body.dark .page-box input,
+body.dark .login-box input {
   background: #242f3d;
   border-color: #2b3a4a;
   color: #e8eef5;
+}
+
+body.dark .tabs .tab {
+  background: #242f3d;
+  color: #c5d3de;
+}
+
+body.dark .tabs .tab.active {
+  background: #0088cc;
+  color: white;
 }
 
 body.dark .sep { border-top-color: #2b3a4a; }
@@ -597,7 +721,8 @@ body.dark .settings-box button.small-btn {
 }
 
 body.dark .modal button.gray,
-body.dark .settings-box button.gray {
+body.dark .settings-box button.gray,
+body.dark .page-box button.gray {
   background: #242f3d;
   color: #c5d3de;
 }
@@ -625,3 +750,16 @@ body.dark .send-box input {
 body.dark .fab {
   background: #2b6da8;
 }
+
+body.dark .archive-row { background: #1b2a38; }
+
+body.dark .saved-row .avatar { background: #3a3320; }
+
+body.dark #ctx-menu {
+  background: #17212b;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+body.dark #ctx-menu button { color: #e8eef5; }
+body.dark #ctx-menu button:hover { background: #242f3d; }
+body.dark #ctx-menu button.danger { color: #e74c3c; }
