@@ -9,7 +9,6 @@ const db = getFirestore(app);
 
 let currentUser = null;
 
-// از URL می‌فهمیم گروه می‌سازه یا کانال
 const type = new URLSearchParams(location.search).get("type") === "channel"
   ? "channel" : "group";
 
@@ -39,12 +38,12 @@ window.createChat = async function () {
   }
 
   const ref = await addDoc(collection(db, "chats"), {
-    type: type,                    // "group" یا "channel"
+    type: type,
     name: name,
     description: description,
     createdBy: currentUser.uid,
-    members: [currentUser.uid],    // اعضا
-    admins: [currentUser.uid],     // ادمین‌ها
+    members: [currentUser.uid],
+    admins: [currentUser.uid],
     lastMessage: "",
     createdAt: Date.now()
   });
