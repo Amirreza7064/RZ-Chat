@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RZ-Chat</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
 
@@ -16,8 +16,18 @@
             <span id="chat-sub"></span>
         </div>
     </div>
-    <button id="logout-btn" onclick="location.href='chats.html'">بازگشت</button>
+    <div class="header-actions">
+        <button id="invite-btn" class="hdr-btn" style="display:none"
+            onclick="openInvite()">🔗 دعوت</button>
+        <button id="logout-btn" onclick="location.href='chats.html'">بازگشت</button>
+    </div>
 </header>
+
+<!-- نوار عضویت (فقط برای غیرعضوها نمایان می‌شود) -->
+<div id="join-bar" class="join-bar" style="display:none">
+    <span id="join-text"></span>
+    <button onclick="joinChat()">عضویت ➕</button>
+</div>
 
 <div id="messages"></div>
 
@@ -27,6 +37,17 @@
     <button onclick="sendMessage()">➤</button>
 </div>
 
-<script type="module" src="app.js"></script>
+<!-- مودال لینک دعوت -->
+<div id="invite-modal" class="modal-overlay" onclick="if(event.target===this) closeInvite()">
+    <div class="modal">
+        <h3>لینک دعوت</h3>
+        <p class="hint">هر کس این لینک را باز کند، عضو می‌شود:</p>
+        <input id="invite-link" readonly onclick="this.select()">
+        <button onclick="copyInvite()">کپی لینک 📋</button>
+        <button class="gray" onclick="closeInvite()">بستن</button>
+    </div>
+</div>
+
+<script type="module" src="app.js?v=5"></script>
 </body>
 </html>
