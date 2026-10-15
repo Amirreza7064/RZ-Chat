@@ -13,11 +13,8 @@ const auth = getAuth(app);
 
 window.registerUser = async function () {
 
-  const email =
-    document.getElementById("email").value;
-
-  const password =
-    document.getElementById("password").value;
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
   try {
 
@@ -27,10 +24,11 @@ window.registerUser = async function () {
       password
     );
 
-    alert("ثبت نام با موفقیت انجام شد");
+    alert("ثبت نام موفق");
 
   } catch (error) {
 
+    console.error(error);
     alert(error.message);
 
   }
@@ -39,11 +37,8 @@ window.registerUser = async function () {
 
 window.loginUser = async function () {
 
-  const email =
-    document.getElementById("email").value;
-
-  const password =
-    document.getElementById("password").value;
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
 
   try {
 
@@ -53,10 +48,13 @@ window.loginUser = async function () {
       password
     );
 
-    location.href = "chat.html";
+    alert("ورود موفق");
+
+    window.location.href = "chat.html";
 
   } catch (error) {
 
+    console.error(error);
     alert(error.message);
 
   }
