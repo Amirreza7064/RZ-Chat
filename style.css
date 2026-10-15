@@ -275,3 +275,567 @@ body {
   color: white;
   font-family: tahoma;
   cursor: pointer;
+}
+
+.settings-box button.gray {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.settings-box button.small-btn {
+  background: #e8f4fb;
+  color: #0088cc;
+  padding: 8px 16px;
+  width: auto;
+}
+
+.avatar-edit {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.sep {
+  border: none;
+  border-top: 1px solid #eee;
+  margin: 20px 0;
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  font-size: 14px;
+}
+
+.setting-row.info { font-size: 13px; }
+
+.muted {
+  color: #999;
+  font-size: 12px;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 26px;
+}
+
+.switch input { display: none; }
+
+.slider {
+  position: absolute;
+  inset: 0;
+  background: #ccc;
+  border-radius: 26px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.slider:before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  right: 3px;
+  top: 3px;
+  background: white;
+  border-radius: 50%;
+  transition: 0.2s;
+}
+
+.switch input:checked + .slider { background: #0088cc; }
+.switch input:checked + .slider:before { transform: translateX(-22px); }
+
+/* ================= آواتار ================= */
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  color: inherit;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.avatar.big {
+  width: 80px;
+  height: 80px;
+  font-size: 32px;
+  margin: 0 auto 10px;
+  background: #e8f4fb;
+  color: #0088cc;
+}
+
+.username-field {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.username-field span {
+  font-weight: bold;
+  color: #0088cc;
+}
+
+/* ================= هدر ================= */
+
+.header {
+  background: linear-gradient(135deg, #0088cc, #006daa);
+  color: white;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header h1 { font-size: 18px; }
+
+#user-name {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#logout-btn,
+.hdr-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: tahoma;
+  font-size: 13px;
+}
+
+#logout-btn:hover,
+.hdr-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* ================= نوار عضویت ================= */
+
+.join-bar {
+  background: white;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  font-size: 14px;
+}
+
+.join-bar button {
+  background: #0088cc;
+  color: white;
+  border: none;
+  padding: 10px 26px;
+  border-radius: 22px;
+  cursor: pointer;
+  font-family: tahoma;
+  white-space: nowrap;
+}
+
+.join-bar button:hover { background: #0077b5; }
+
+/* ================= لیست چت‌ها و مخاطبین ================= */
+
+#chat-list, #contact-list { padding: 10px 15px; }
+
+.chat-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  transition: 0.15s;
+}
+
+.chat-item:hover { transform: translateX(-3px); }
+
+.chat-item .avatar {
+  background: #e8f4fb;
+  color: #0088cc;
+}
+
+.chat-name { font-weight: bold; }
+
+.chat-last {
+  font-size: 12px;
+  color: #888;
+  margin-top: 3px;
+}
+
+.empty {
+  text-align: center;
+  color: #999;
+  margin-top: 40px;
+}
+
+/* ----- سنجاق، بایگانی، بج، زمان ----- */
+
+.chat-mid {
+  flex: 1;
+  min-width: 0;
+}
+
+.chat-mid .chat-last {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.chat-time {
+  font-size: 10px;
+  color: #999;
+}
+
+/* 🔵 بج دایره‌ای تلگرامی */
+.badge {
+  background: #0088cc;
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  min-width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  box-shadow: 0 1px 4px rgba(0, 136, 204, 0.4);
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  background: #0088cc;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.pin-ic {
+  font-size: 11px;
+  margin-left: 4px;
+}
+
+.saved-row .avatar {
+  background: #fff3cd;
+}
+
+.archive-row {
+  background: #eef6fb;
+}
+
+/* ----- منوی راست‌کلیک ----- */
+
+#ctx-menu {
+  position: fixed;
+  display: none;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  z-index: 300;
+  min-width: 230px;
+  overflow: hidden;
+}
+
+#ctx-menu button {
+  display: block;
+  width: 100%;
+  text-align: right;
+  padding: 11px 16px;
+  border: none;
+  background: none;
+  font-family: tahoma;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#ctx-menu button:hover {
+  background: #e8f4fb;
+}
+
+#ctx-menu button.danger {
+  color: #c0392b;
+}
+
+/* ================= صفحه چت ================= */
+
+#messages {
+  height: calc(100vh - 145px);
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.message {
+  background: white;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  max-width: 70%;
+  width: fit-content;
+}
+
+.message.mine {
+  background: linear-gradient(135deg, #0088cc, #22a5e0);
+  color: white;
+  margin-right: auto;
+  border-bottom-right-radius: 12px;
+  border-bottom-left-radius: 4px;
+}
+
+.sender {
+  font-size: 12px;
+  font-weight: bold;
+  color: #0088cc;
+  margin-bottom: 4px;
+}
+
+.time {
+  font-size: 10px;
+  opacity: 0.6;
+  text-align: left;
+  margin-top: 4px;
+}
+
+.send-box {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  padding: 10px 15px;
+  background: white;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+}
+
+.send-box input {
+  flex: 1;
+  padding: 14px 18px;
+  border: none;
+  border-radius: 24px;
+  background: #f0f2f5;
+  outline: none;
+  font-family: tahoma;
+}
+
+.send-box button {
+  width: 50px;
+  height: 50px;
+  border: none;
+  border-radius: 50%;
+  background: #0088cc;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.send-box button:hover { background: #0077b5; }
+
+/* ================= صفحه‌های فرم ================= */
+
+.page-box {
+  width: 340px;
+  margin: 60px auto;
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.page-box h2 {
+  color: #0088cc;
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.page-box label {
+  display: block;
+  font-size: 13px;
+  color: #555;
+  margin: 12px 0 5px;
+}
+
+.page-box input {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+  font-family: tahoma;
+}
+
+.page-box input:focus { border-color: #0088cc; }
+
+.page-box button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background: #0088cc;
+  color: white;
+  font-family: tahoma;
+}
+
+.page-box button.gray {
+  background: #e0e0e0;
+  color: #333;
+}
+
+/* ============================================================
+   🌙 حالت شب
+   ============================================================ */
+
+body.dark { background: #0e1621; }
+
+body.dark .header {
+  background: linear-gradient(135deg, #1f2c3a, #17212b);
+}
+
+body.dark .chat-item,
+body.dark .contact-actions button,
+body.dark .settings-box,
+body.dark .modal,
+body.dark .page-box,
+body.dark .login-box {
+  background: #17212b;
+  color: #e8eef5;
+}
+
+body.dark .chat-item { box-shadow: none; }
+body.dark .chat-item .avatar { background: #242f3d; color: #5eb5f7; }
+
+body.dark .chat-last,
+body.dark .muted,
+body.dark .empty,
+body.dark .hint,
+body.dark .chat-time { color: #7d8e9e; }
+
+body.dark .settings-box label,
+body.dark .page-box label,
+body.dark .modal-label { color: #8fa4b8; }
+
+body.dark .settings-box input,
+body.dark .modal input,
+body.dark .page-box input,
+body.dark .login-box input,
+body.dark .member-picker {
+  background: #242f3d;
+  border-color: #2b3a4a;
+  color: #e8eef5;
+}
+
+body.dark .member-row:hover { background: #1f2a36; }
+
+body.dark .tabs .tab {
+  background: #242f3d;
+  color: #c5d3de;
+}
+
+body.dark .tabs .tab.active {
+  background: #0088cc;
+  color: white;
+}
+
+body.dark .sep { border-top-color: #2b3a4a; }
+
+body.dark .settings-box button.small-btn {
+  background: #242f3d;
+  color: #5eb5f7;
+}
+
+body.dark .modal button.gray,
+body.dark .settings-box button.gray,
+body.dark .page-box button.gray {
+  background: #242f3d;
+  color: #c5d3de;
+}
+
+body.dark .message {
+  background: #182533;
+  color: #e8eef5;
+  box-shadow: none;
+}
+
+body.dark .message.mine {
+  background: linear-gradient(135deg, #2b5278, #2b6da8);
+  color: white;
+}
+
+body.dark .sender { color: #5eb5f7; }
+
+body.dark .send-box { background: #17212b; }
+
+body.dark .send-box input {
+  background: #242f3d;
+  color: #e8eef5;
+}
+
+body.dark .fab {
+  background: #2b6da8;
+}
+
+body.dark .archive-row { background: #1b2a38; }
+
+body.dark .saved-row .avatar { background: #3a3320; }
+
+body.dark .join-bar {
+  background: #17212b;
+  color: #e8eef5;
+}
+
+body.dark .badge {
+  background: #2b6da8;
+}
+
+body.dark #ctx-menu {
+  background: #17212b;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+}
+
+body.dark #ctx-menu button { color: #e8eef5; }
+body.dark #ctx-menu button:hover { background: #242f3d; }
+body.dark #ctx-menu button.danger { color: #e74c3c; }
