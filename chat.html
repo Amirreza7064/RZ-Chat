@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RZ-Chat</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header">
+    <div class="header-info">
+        <div class="avatar" id="chat-icon">👥</div>
+        <div>
+            <h1 id="chat-title">RZ-Chat</h1>
+            <span id="chat-sub"></span>
+        </div>
+    </div>
+    <button id="logout-btn" onclick="location.href='chats.html'">بازگشت</button>
+</header>
+
+<div id="messages"></div>
+
+<div class="send-box" id="send-box" style="display:none">
+    <input id="messageInput" type="text" placeholder="پیام..."
+        onkeydown="if(event.key === 'Enter') sendMessage()">
+    <button onclick="sendMessage()">➤</button>
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
