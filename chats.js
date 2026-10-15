@@ -13,11 +13,14 @@ const db = getFirestore(app);
 
 let me = null;
 let myData = {};
-let chatsMap = {};      // chatId -> اطلاعات چت
-let metaMap = {};       // chatId -> سنجاق/بایگانی/خوانده‌نشده من
-let contactsMap = {};   // uid -> اطلاعات مخاطب
-let currentView = "main"; // "main" یا "archived"
+let chatsMap = {};
+let metaMap = {};
+let contactsMap = {};
+let currentView = "main";
 const userCache = {};
+
+let prevTimes = {};
+let firstChatsLoad = true;
 
 if (localStorage.getItem("dark") === "1") document.body.classList.add("dark");
 
@@ -114,7 +117,6 @@ onAuthStateChanged(auth, async (user) => {
     document.getElementById("dark-toggle").checked =
       localStorage.getItem("dark") === "1";
 
-    // ساخت «پیام‌های ذخیره‌شده» اگر وجود ندارد
     await setDoc(doc(db, "chats", "saved_" + user.uid), {
       type: "saved",
       members: [user.uid],
@@ -133,16 +135,70 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-/* ---------- شنونده‌ها ---------- */
+/* ---------- تب‌ها و خروج ---------- */
+
+window.showTab = function (tab) {
+  document.querySelectorAll(".tab-page").forEach(p => p.classList.remove("active"));
+  const el = document.getElementById("tab-" + tab);
+  if (el) el.classList.add("active");
+  window.scrollTo(0, 0);
+};
+
+window.logout = async function () {
+  await signOut(auth);
+  location.href = "index.html";
+};
+
+/* ---------- لیست چت‌ها + اعلان ---------- */
 
 function listenChats() {
   const q = query(collection(db, "chats"), where("members", "array-contains", me.uid));
   onSnapshot(q, (snap) => {
     chatsMap = {};
     snap.forEach(d => { chatsMap[d.id] = d.data(); });
+
+    if (!firstChatsLoad) maybeNotify(chatsMap);
+    firstChatsLoad = false;
+    prevTimes = {};
+    Object.entries(chatsMap).forEach(([id, c]) => { prevTimes[id] = c.lastMessageTime || 0; });
+
     render();
   }, (err) => showErr("خطای دیتابیس (چت‌ها): " + err.code));
 }
+
+async function maybeNotify(newMap) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+  for (const [id, chat] of Object.entries(newMap)) {
+    if (id === "saved_" + me.uid) continue;
+    if ((metaMap[id] || {}).archived) continue;
+
+    const t = chat.lastMessageTime || 0;
+    if (t <= (prevTimes[id] || 0)) continue;
+    if (!chat.lastMessageSender || chat.lastMessageSender === me.uid) continue;
+
+    let title = chat.name || "پیام جدید";
+    let body = chat.lastMessage || "";
+
+    try {
+      if (chat.type === "private") {
+        const other = (chat.members || []).find(u => u !== me.uid);
+        const info = await getUserInfo(other);
+        title = info.name || "پیام جدید";
+      } else if (chat.type === "group") {
+        const s = await getUserInfo(chat.lastMessageSender);
+        if (s.name) body = s.name + ": " + body;
+      }
+    } catch (e) { /* ignore */ }
+
+    try {
+      const n = new Notification(title, { body: body });
+      n.onclick = () => { window.focus(); location.href = "chat.html?id=" + id; };
+    } catch (e) { /* ignore */ }
+  }
+}
+
+/* ---------- متادیتا (سنجاق/بایگانی/خوانده‌نشده) ---------- */
 
 function listenMeta() {
   const q = collection(db, "users", me.uid, "chatMeta");
@@ -152,6 +208,8 @@ function listenMeta() {
     render();
   }, (err) => showErr("خطای دیتابیس (متادیتا): " + err.code));
 }
+
+/* ---------- مخاطبین ---------- */
 
 function listenContacts() {
   const list = document.getElementById("contact-list");
@@ -266,6 +324,9 @@ async function itemHTML(id, chat) {
     const info = otherUid ? await getUserInfo(otherUid) : { name: "کاربر" };
     iconHtml = avatarHTML(info);
     title = info.name || "کاربر";
+  } else if (chat.type === "saved") {
+    iconHtml = "🔖";
+    title = "پیام‌های ذخیره‌شده";
   } else {
     iconHtml = chat.type === "channel" ? "📢" : "👥";
     title = chat.name || "چت";
@@ -328,7 +389,7 @@ async function updateBadges() {
   }
 }
 
-/* ---------- منوی راست‌کلیک (چت‌ها + مخاطبین) ---------- */
+/* ---------- منوی راست‌کلیک ---------- */
 
 const ctxMenu = document.getElementById("ctx-menu");
 
@@ -345,13 +406,11 @@ document.addEventListener("contextmenu", (e) => {
   let html = "";
 
   if (contactItem) {
-    /* ----- منوی مخاطب ----- */
     const uid = contactItem.getAttribute("data-contact");
     html += `<button onclick="ctxRenameContact('${uid}')">✏️ تغییر نام مخاطب</button>`;
     html += `<button class="danger" onclick="ctxRemoveContact('${uid}')">🗑 حذف از مخاطبین</button>`;
 
   } else {
-    /* ----- منوی چت ----- */
     const id = chatItem.getAttribute("data-chat");
     const chat = chatsMap[id];
     const meta = metaMap[id] || {};
@@ -436,18 +495,6 @@ window.openChat = function (id) {
 
 window.showArchivedView = function () { currentView = "archived"; render(); };
 window.showMainView = function () { currentView = "main"; render(); };
-
-window.showTab = function (tab) {
-  document.querySelectorAll(".tab-page").forEach(p => p.classList.remove("active"));
-  const el = document.getElementById("tab-" + tab);
-  if (el) el.classList.add("active");
-  window.scrollTo(0, 0);
-};
-
-window.logout = async function () {
-  await signOut(auth);
-  location.href = "index.html";
-};
 
 /* ---------- چت خصوصی از مخاطبین ---------- */
 
@@ -538,7 +585,6 @@ window.searchContact = async function () {
         <button id="add-btn">افزودن به مخاطبین ➕</button>
       </div>`;
 
-    // مقدار پیش‌فرض: اسم واقعی کاربر (با JS ست می‌شود تا کوتیشن‌ها خراب نشوند)
     document.getElementById("add-name").value = data.name || "کاربر";
 
     document.getElementById("add-btn").onclick = async () => {
@@ -630,6 +676,17 @@ window.uploadPhoto = function (input) {
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
+};
+
+/* ---------- اعلان‌های مرورگر ---------- */
+
+window.askNotifPerm = async function () {
+  if (!("Notification" in window)) {
+    alert("مرورگرت از اعلان پشتیبانی نمی‌کند");
+    return;
+  }
+  const p = await Notification.requestPermission();
+  alert(p === "granted" ? "اعلان‌ها فعال شد ✅" : "اعلان‌ها رد شد ❌");
 };
 
 /* ---------- حالت شب ---------- */
