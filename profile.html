@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>پروفایل | RZ-Chat</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="page-box">
+    <h2>پروفایل من</h2>
+
+    <div class="avatar big" id="avatar">؟</div>
+
+    <label>نام نمایشی</label>
+    <input id="name" type="text">
+
+    <label>آیدی (حروف انگلیسی، عدد و _)</label>
+    <div class="username-field">
+        <span>@</span>
+        <input id="username" type="text" placeholder="username">
+    </div>
+    <button class="small-btn" onclick="checkUsername()">بررسی آیدی</button>
+    <p id="username-status"></p>
+
+    <label>بیوگرافی</label>
+    <input id="bio" type="text" placeholder="درباره من...">
+
+    <button onclick="saveProfile()">ذخیره</button>
+    <button class="gray" onclick="location.href='chats.html'">بازگشت</button>
+</div>
+
+<script type="module" src="profile.js"></script>
+</body>
+</html>
