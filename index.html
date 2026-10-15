@@ -4,39 +4,38 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RZ-Chat Login</title>
-
 <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
 <div class="login-box">
-
     <h2>RZ-Chat</h2>
 
-    <input
-        id="email"
-        type="email"
-        placeholder="Email"
-    >
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('email')">ایمیل</button>
+        <button class="tab" onclick="showTab('phone')">شماره تلفن</button>
+    </div>
 
-    <input
-        id="password"
-        type="password"
-        placeholder="Password"
-    >
+    <div id="email-tab">
+        <input id="email" type="email" placeholder="Email">
+        <input id="password" type="password" placeholder="Password">
+        <button onclick="registerUser()">ثبت نام</button>
+        <button onclick="loginUser()">ورود</button>
+    </div>
 
-    <button onclick="registerUser()">
-        ثبت نام
-    </button>
+    <div id="phone-tab" style="display:none">
+        <input id="phone" type="tel" placeholder="+989123456789">
+        <button onclick="sendCode()">ارسال کد</button>
 
-    <button onclick="loginUser()">
-        ورود
-    </button>
+        <div id="code-section" style="display:none">
+            <input id="code" type="text" placeholder="کد ۶ رقمی">
+            <button onclick="verifyCode()">تأیید</button>
+        </div>
+    </div>
 
+    <div id="recaptcha-container"></div>
 </div>
 
 <script type="module" src="login.js"></script>
-
 </body>
 </html>
