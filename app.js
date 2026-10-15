@@ -1,76 +1,61 @@
-import { initializeApp }
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
 import {
-getFirestore,
-collection,
-addDoc,
-query,
-orderBy,
-onSnapshot
-}
-from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  getFirestore,
+  collection,
+  addDoc,
+  query,
+  orderBy,
+  onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-import { firebaseConfig }
-from "./firebase.js";
+import { firebaseConfig } from "./firebase.js";
 
 const app = initializeApp(firebaseConfig);
-
 const db = getFirestore(app);
 
-window.sendMessage = async function(){
+async function sendMessage() {
 
-    const input =
-    document.getElementById("messageInput");
+  const input = document.getElementById("messageInput");
 
-    const text = input.value.trim();
+  const text = input.value.trim();
 
-    if(text === "") return;
+  if (!text) return;
 
-    try{
-
-        await addDoc(
-            collection(db,"messages"),
-            {
-                text:text,
-                time:Date.now()
-            }
-        );
-
-        input.value = "";
-
-    }catch(error){
-
-        console.log(error);
-
+  await addDoc(
+    collection(db, "messages"),
+    {
+      text: text,
+      time: Date.now()
     }
-};
+  );
+
+  input.value = "";
+}
+
+window.sendMessage = sendMessage;
 
 const q = query(
-    collection(db,"messages"),
-    orderBy("time")
+  collection(db, "messages"),
+  orderBy("time")
 );
 
-onSnapshot(q,(snapshot)=>{
+onSnapshot(q, (snapshot) => {
 
-    const messagesDiv =
-    document.getElementById("messages");
+  const messagesDiv = document.getElementById("messages");
 
-    messagesDiv.innerHTML = "";
+  messagesDiv.innerHTML = "";
 
-    snapshot.forEach((doc)=>{
+  snapshot.forEach((doc) => {
 
-        const data = doc.data();
+    const data = doc.data();
 
-        messagesDiv.innerHTML += `
-            <div class="message">
-                ${data.text}
-            </div>
-        `;
+    messagesDiv.innerHTML += `
+      <div class="message">
+        ${data.text}
+      </div>
+    `;
 
-    });
-
-    messagesDiv.scrollTop =
-    messagesDiv.scrollHeight;
+  });
 
 });
