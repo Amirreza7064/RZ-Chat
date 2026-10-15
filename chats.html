@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RZ-Chat</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="header">
+    <div class="header-info" onclick="location.href='profile.html'" style="cursor:pointer">
+        <div class="avatar" id="avatar">؟</div>
+        <div>
+            <h1>RZ-Chat</h1>
+            <span id="user-name"></span>
+        </div>
+    </div>
+    <button id="logout-btn" onclick="logout()">خروج</button>
+</header>
+
+<div class="actions">
+    <button onclick="location.href='create.html?type=group'">👥 گروه جدید</button>
+    <button onclick="location.href='create.html?type=channel'">📢 کانال جدید</button>
+</div>
+
+<div id="chat-list"></div>
+
+<script type="module" src="chats.js"></script>
+</body>
+</html>
