@@ -1,4 +1,4 @@
-const CACHE = "rz-chat-v8";
+const CACHE = "rz-chat-v9";
 
 self.addEventListener("install", (e) => {
   self.skipWaiting();
@@ -17,11 +17,11 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
+  const h = url.hostname;
 
-  // فایل‌های Firebase را هرگز کش نکن (همیشه تازه)
-  if (url.origin.includes("googleapis") ||
-      url.origin.includes("gstatic") ||
-      url.origin.includes("firebaseio")) return;
+  if (h.includes("supabase") || h.includes("googleapis") ||
+      h.includes("gstatic") || h.includes("firebaseio") ||
+      h.includes("jsdelivr")) return;
 
   e.respondWith((async () => {
     try {
