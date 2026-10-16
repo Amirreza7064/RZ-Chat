@@ -4,38 +4,174 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#0088cc">
+<meta name="description" content="RZ-Chat — پیام‌رسان رایگان، امن و سریع با گروه، کانال، پیام صوتی و حالت شب">
 <link rel="manifest" href="manifest.json">
-<title>RZ-Chat Login</title>
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="icon" type="image/svg+xml" href="logo.svg">
+<title>RZ-Chat — پیام‌رسان رایگان</title>
+<link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 
-<div class="login-box">
-    <h2>RZ-Chat</h2>
+<script>if (localStorage.getItem("dark") === "1") document.body.classList.add("dark");</script>
 
-    <div class="tabs">
-        <button class="tab active" onclick="showTab('email')">ایمیل</button>
-        <button class="tab" onclick="showTab('phone')">شماره تلفن</button>
-    </div>
-
-    <div id="email-tab">
-        <input id="email" type="email" placeholder="Email">
-        <input id="password" type="password" placeholder="Password">
-        <button onclick="registerUser()">ثبت نام</button>
-        <button onclick="loginUser()">ورود</button>
-    </div>
-
-    <div id="phone-tab" style="display:none">
-        <p class="hint">
-            شماره‌ات آیدی حسابت می‌شود. برای تأیید، یک لینک ورود به
-            ایمیلت فرستاده می‌شود — بدون پیامک و بدون رمز عبور 🆓
-        </p>
-        <input id="phone" type="tel" placeholder="09123456789">
-        <input id="phone-email" type="email" placeholder="Email (فقط هنگام ثبت‌نام)">
-        <button onclick="phoneLogin()">ورود / ثبت‌نام</button>
-        <p id="phone-status" class="hint"></p>
-    </div>
+<!-- بک‌گراند متحرک -->
+<div class="bg-deco">
+    <div class="blob b1"></div>
+    <div class="blob b2"></div>
+    <div class="blob b3"></div>
 </div>
+
+<!-- ============ هدر ============ -->
+<header class="site-header">
+    <div class="sh-inner">
+        <div class="sh-brand">
+            <img src="logo.svg" alt="لوگو" class="sh-logo">
+            <span>RZ-Chat</span>
+        </div>
+        <nav class="sh-nav">
+            <a href="#features">ویژگی‌ها</a>
+            <a href="#faq">سوالات متداول</a>
+        </nav>
+    </div>
+</header>
+
+<!-- ============ هیرو: معرفی + فرم ورود ============ -->
+<section class="hero">
+    <div class="hero-grid">
+
+        <div class="hero-text">
+            <img src="logo.svg" alt="RZ-Chat" class="hero-logo">
+            <h1>پیام‌رسان <span class="grad">RZ-Chat</span></h1>
+            <p class="hero-sub">
+                رایگان، سریع و بدون محدودیت — با گروه، کانال، پیام صوتی،
+                ریپلای و ری‌اکشن. بدون نیاز به شماره یا هزینه!
+            </p>
+
+            <div class="chips">
+                <span class="chip">🆓 ۱۰۰٪ رایگان</span>
+                <span class="chip">⚡ بدون فیلتر</span>
+                <span class="chip">📱 نصب روی گوشی</span>
+                <span class="chip">🌙 حالت شب</span>
+            </div>
+        </div>
+
+        <!-- فرم ورود -->
+        <div class="login-box">
+            <h2>خوش آمدی 👋</h2>
+
+            <div class="tabs">
+                <button class="tab active" onclick="showTab('email')">ایمیل</button>
+                <button class="tab" onclick="showTab('phone')">شماره تلفن</button>
+            </div>
+
+            <div id="email-tab">
+                <input id="email" type="email" placeholder="Email">
+                <input id="password" type="password" placeholder="Password">
+                <button onclick="registerUser()">ثبت نام</button>
+                <button onclick="loginUser()">ورود</button>
+            </div>
+
+            <div id="phone-tab" style="display:none">
+                <p class="hint">
+                    شماره‌ات آیدی حسابت می‌شود. برای تأیید، یک لینک ورود به
+                    ایمیلت فرستاده می‌شود — بدون پیامک و بدون رمز 🆓
+                </p>
+                <input id="phone" type="tel" placeholder="09123456789">
+                <input id="phone-email" type="email" placeholder="Email (فقط هنگام ثبت‌نام)">
+                <button onclick="phoneLogin()">ورود / ثبت‌نام</button>
+                <p id="phone-status" class="hint"></p>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- ============ ویژگی‌ها ============ -->
+<section class="features" id="features">
+    <h2 class="sec-title">چرا RZ-Chat؟</h2>
+
+    <div class="feature-grid">
+
+        <div class="feature-card">
+            <div class="f-ic">🆓</div>
+            <h3>کاملاً رایگان</h3>
+            <p>نه اشتراک، نه هزینه پیامک، نه محدودیت. همه‌چیز رایگانه!</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="f-ic">👥</div>
+            <h3>گروه و کانال</h3>
+            <p>گروه بساز، کانال تأسیس کن، با لینک دعوت عضو اضافه کن.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="f-ic">🎤</div>
+            <h3>پیام صوتی</h3>
+            <p>صدا ضبط کن، با نمایش موج تلگرامی بفرست و گوش بده.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="f-ic">🖼️</div>
+            <h3>عکس و ری‌اکشن</h3>
+            <p>عکس بفرست، به پیام‌ها ایموجی بده، ریپلای و فوروارد کن.</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="f-ic">📱</div>
+            <h3>مثل اپ نصب می‌شود</h3>
+            <p>از مرورگر گوشی، RZ-Chat را مثل یک اپ واقعی نصب کن (PWA).</p>
+        </div>
+
+        <div class="feature-card">
+            <div class="f-ic">🔔</div>
+            <h3>اعلان هوشمند</h3>
+            <p>پیام جدید؟ اعلان می‌آید؛ حتی وقتی توی چت دیگری هستی.</p>
+        </div>
+
+    </div>
+</section>
+
+<!-- ============ سوالات متداول ============ -->
+<section class="faq" id="faq">
+    <h2 class="sec-title">سوالات متداول</h2>
+
+    <details class="faq-item">
+        <summary>آیا RZ-Chat واقعاً رایگان است؟</summary>
+        <p>بله! ثبت‌نام، چت، گروه، کانال و همه قابلیت‌ها رایگان‌اند و هیچ اشتراکی هم وجود ندارد.</p>
+    </details>
+
+    <details class="faq-item">
+        <summary>چطور با شماره تلفن وارد شوم؟</summary>
+        <p>تب «شماره تلفن» را بزن، شماره‌ات را وارد کن و ایمیلت را هم بنویس. یک لینک ورود به ایمیلت می‌آید — رویش کلیک کنی وارد می‌شوی. بدون پیامک و بدون رمز!</p>
+    </details>
+
+    <details class="faq-item">
+        <summary>ایمیل تأیید یا لینک ورود برایم نیامد!</summary>
+        <p>پوشه <b>Spam / Junk</b> ایمیلت را چک کن و آن را «Not Spam» علامت بزن. گاهی هم ارسال ایمیل ۱-۲ دقیقه طول می‌کشد.</p>
+    </details>
+
+    <details class="faq-item">
+        <summary>اطلاعات من امن است؟</summary>
+        <p>رمز عبور تو هرگز ذخیره و نمایش داده نمی‌شود و پیام‌ها فقط برای اعضای همان چت قابل خواندن‌اند. ورود با شماره هم از طریق لینک اختصاصی و یک‌بارمصرف انجام می‌شود.</p>
+    </details>
+
+    <details class="faq-item">
+        <summary>چطور گروه یا کانال بسازم؟</summary>
+        <p>بعد از ورود، دکمه ＋ پایین صفحه را بزن و «ساخت گروه» یا «ساخت کانال» را انتخاب کن. می‌توانی از مخاطبین عضو اضافه کنی یا با لینک دعوت آدم بیاری.</p>
+    </details>
+
+    <details class="faq-item">
+        <summary>روی گوشی چطور نصبش کنم؟</summary>
+        <p>سایت را با کروم (اندروید) یا سافاری (آیفون) باز کن، از منوی مرورگر گزینه «Add to Home screen / نصب برنامه» را بزن — مثل یک اپ واقعی می‌شود!</p>
+    </details>
+
+</section>
+
+<!-- ============ فوتر ============ -->
+<footer class="site-footer">
+    <img src="logo.svg" alt="" class="f-logo">
+    <p>RZ-Chat — ساخته شده با 💙</p>
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script type="module" src="login.js?v=9"></script>
