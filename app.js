@@ -169,6 +169,19 @@ async function start() {
     });
 
     await loadMessages();
+
+    /* 🔍 پشتیبانی از جستجوی سراسری: chat.html?id=...&q=...&mid=... (جدید) */
+    const qp = new URLSearchParams(location.search).get("q");
+    const midp = new URLSearchParams(location.search).get("mid");
+    if (qp) {
+      window.toggleSearch();
+      const si = document.getElementById("search-input");
+      si.value = qp;
+      window.onCSearch(si, false);
+      if (midp && searchHits.includes(midp)) {
+        gotoSearch(searchHits.indexOf(midp));
+      }
+    }
   } catch (e) {
     showErr("خطای بارگذاری: " + e.message);
   }
@@ -770,6 +783,12 @@ async function loadMessages() {
 
   box.scrollTop = box.scrollHeight;
   markAsRead();
+
+  /* 🔍 اگر جستجویی باز است، هایلایت‌ها را دوباره اعمال کن (جدید) */
+  if (searchQ) {
+    const si = document.getElementById("search-input");
+    if (si) window.onCSearch(si, false);
+  }
 }
 
 function messageHTML(d, mid) {
@@ -897,5 +916,96 @@ window.deleteMsg = async function (mid) {
     }).eq("id", mid);
   if (error) showErr("حذف نشد: " + error.message);
 };
+
+/* ================= 🔍 جستجو در گفتگو (جدید) ================= */
+
+let searchHits = [];
+let searchIdx = -1;
+let searchQ = "";
+
+function clearSearchHits() {
+  document.querySelectorAll("#messages .search-hit, #messages .search-hit-active")
+    .forEach(el => el.classList.remove("search-hit", "search-hit-active"));
+}
+
+window.toggleSearch = function () {
+  const bar = document.getElementById("search-bar");
+  if (!bar) return;
+  if (bar.style.display === "none" || !bar.style.display) {
+    bar.style.display = "flex";
+    document.body.classList.add("searching");
+    const si = document.getElementById("search-input");
+    si.value = searchQ || "";
+    si.focus();
+    if (searchQ) window.onCSearch(si, false);
+  } else {
+    closeSearch();
+  }
+};
+
+window.closeSearch = function () {
+  const bar = document.getElementById("search-bar");
+  if (bar) bar.style.display = "none";
+  document.body.classList.remove("searching");
+  clearSearchHits();
+  searchHits = [];
+  searchIdx = -1;
+  searchQ = "";
+  const c = document.getElementById("search-count");
+  if (c) c.textContent = "";
+};
+
+window.onCSearch = function (el, isEnter) {
+  const q = (el.value || "").trim().toLowerCase();
+  searchQ = q;
+  clearSearchHits();
+  searchHits = [];
+  searchIdx = -1;
+  const counter = document.getElementById("search-count");
+  if (counter) counter.textContent = "";
+  if (!q) return;
+
+  const mids = Object.keys(messagesCache)
+    .filter(mid => {
+      const d = messagesCache[mid];
+      return !d.deleted && (d.text || "").toLowerCase().includes(q);
+    })
+    .sort((a, b) => (messagesCache[a].time || 0) - (messagesCache[b].time || 0));
+
+  if (!mids.length) {
+    if (counter) counter.textContent = "پیدا نشد";
+    return;
+  }
+
+  searchHits = mids;
+  mids.forEach(mid => {
+    const elm = document.querySelector(`#messages [data-mid="${mid}"]`);
+    if (elm) elm.classList.add("search-hit");
+  });
+
+  gotoSearch(mids.length - 1);
+
+  if (isEnter && searchHits.length > 1) {
+    gotoSearch(searchIdx + 1);
+  }
+};
+
+function gotoSearch(idx) {
+  if (!searchHits.length) return;
+  const cur = document.querySelector("#messages .search-hit-active");
+  if (cur) cur.classList.remove("search-hit-active");
+  searchIdx = ((idx % searchHits.length) + searchHits.length) % searchHits.length;
+  const mid = searchHits[searchIdx];
+  const elm = document.querySelector(`#messages [data-mid="${mid}"]`);
+  if (elm) {
+    elm.classList.add("search-hit-active");
+    jumpTo(mid);
+  }
+  const counter = document.getElementById("search-count");
+  if (counter) counter.textContent = (searchIdx + 1) + " از " + searchHits.length;
+}
+
+window.searchNext = function () { gotoSearch(searchIdx + 1); };
+window.searchPrev = function () { gotoSearch(searchIdx - 1); };
 
 start();
