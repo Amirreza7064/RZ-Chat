@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0088cc">
 <link rel="manifest" href="manifest.json">
 <title>RZ-Chat</title>
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 
@@ -19,11 +19,22 @@
         </div>
     </div>
     <div class="header-actions">
+        <button id="csearch-btn" class="hdr-btn" onclick="toggleSearch()" title="جستجو در گفتگو">🔍</button>
         <button id="invite-btn" class="hdr-btn" style="display:none"
             onclick="openInfo()">🔗 دعوت</button>
         <button id="logout-btn" onclick="location.href='chats.html'">بازگشت</button>
     </div>
 </header>
+
+<!-- 🔍 نوار جستجو داخل گفتگو (جدید) -->
+<div id="search-bar" class="search-bar" style="display:none">
+    <input id="search-input" type="text" placeholder="جستجو در این گفتگو..."
+        oninput="onCSearch(this)" onkeydown="if(event.key === 'Enter') onCSearch(this,true)">
+    <span id="search-count"></span>
+    <button onclick="searchPrev()" title="قبلی">↑</button>
+    <button onclick="searchNext()" title="بعدی">↓</button>
+    <button onclick="closeSearch()" title="بستن">✖</button>
+</div>
 
 <div id="join-bar" class="join-bar" style="display:none">
     <span id="join-text"></span>
@@ -111,7 +122,7 @@
 <div id="msg-menu"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script type="module" src="app.js?v=9"></script>
+<script type="module" src="app.js?v=10"></script>
 <script>
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
