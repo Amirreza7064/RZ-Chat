@@ -1,5 +1,5 @@
 /* ============================================================
-   RZ-Chat — استایل کامل (v7)
+   RZ-Chat — استایل کامل (v9) + لندینگ
    ============================================================ */
 
 * {
@@ -8,26 +8,197 @@
   box-sizing: border-box;
 }
 
+html { scroll-behavior: smooth; }
+
 body {
   font-family: tahoma;
   background: #e7ebf0;
 }
 
-/* ================= صفحه ورود ================= */
+/* ============================================================
+   🌄 بک‌گراند متحرک لندینگ
+   ============================================================ */
+
+.bg-deco {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  background: linear-gradient(160deg, #dff1fb 0%, #e7ebf0 45%, #dceef8 100%);
+}
+
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.55;
+  animation: float 14s ease-in-out infinite;
+}
+
+.b1 {
+  width: 420px;
+  height: 420px;
+  background: #7fd0f5;
+  top: -120px;
+  right: -100px;
+}
+
+.b2 {
+  width: 340px;
+  height: 340px;
+  background: #a5d8f3;
+  bottom: 10%;
+  left: -120px;
+  animation-delay: -5s;
+}
+
+.b3 {
+  width: 260px;
+  height: 260px;
+  background: #c3e6fa;
+  top: 45%;
+  right: 18%;
+  animation-delay: -9s;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-40px) scale(1.06); }
+}
+
+/* ============================================================
+   🏠 هدر لندینگ
+   ============================================================ */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.06);
+}
+
+.sh-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sh-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: bold;
+  font-size: 18px;
+  color: #0088cc;
+}
+
+.sh-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+}
+
+.sh-nav {
+  display: flex;
+  gap: 18px;
+}
+
+.sh-nav a {
+  color: #456;
+  text-decoration: none;
+  font-size: 14px;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+.sh-nav a:hover {
+  background: #e8f4fb;
+  color: #0088cc;
+}
+
+/* ============================================================
+   🦸 هیرو (معرفی + فرم ورود)
+   ============================================================ */
+
+.hero {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 50px 20px 30px;
+}
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 40px;
+  align-items: center;
+}
+
+.hero-text {
+  text-align: right;
+}
+
+.hero-logo {
+  width: 84px;
+  height: 84px;
+  border-radius: 22px;
+  box-shadow: 0 12px 30px rgba(0, 136, 204, 0.35);
+  margin-bottom: 18px;
+}
+
+.hero-text h1 {
+  font-size: 34px;
+  margin-bottom: 14px;
+  color: #1b2a3a;
+}
+
+.grad {
+  background: linear-gradient(135deg, #0088cc, #22a5e0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero-sub {
+  font-size: 15px;
+  line-height: 2;
+  color: #52627a;
+  margin-bottom: 18px;
+  max-width: 440px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid #cfe6f5;
+  color: #067ab3;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+/* ---------- فرم ورود ---------- */
 
 .login-box {
-  width: 320px;
-  margin: 100px auto;
   background: white;
   padding: 30px;
-  border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 60, 100, 0.15);
   text-align: center;
 }
 
 .login-box h2 {
   color: #0088cc;
-  margin-bottom: 25px;
+  margin-bottom: 22px;
 }
 
 .login-box input {
@@ -95,7 +266,139 @@ body {
 
 .ok-text { color: green; }
 
-/* ================= تب‌های صفحه اصلی ================= */
+/* ============================================================
+   ✨ ویژگی‌ها
+   ============================================================ */
+
+.sec-title {
+  text-align: center;
+  font-size: 26px;
+  color: #1b2a3a;
+  margin-bottom: 26px;
+}
+
+.features {
+  max-width: 1080px;
+  margin: 40px auto;
+  padding: 0 20px;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.feature-card {
+  background: white;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 6px 24px rgba(0, 60, 100, 0.07);
+  transition: 0.2s;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 136, 204, 0.18);
+}
+
+.f-ic {
+  font-size: 34px;
+  margin-bottom: 10px;
+}
+
+.feature-card h3 {
+  font-size: 16px;
+  color: #067ab3;
+  margin-bottom: 8px;
+}
+
+.feature-card p {
+  font-size: 13px;
+  color: #61728a;
+  line-height: 1.9;
+}
+
+/* ============================================================
+   ❓ سوالات متداول
+   ============================================================ */
+
+.faq {
+  max-width: 720px;
+  margin: 40px auto 60px;
+  padding: 0 20px;
+}
+
+.faq-item {
+  background: white;
+  border-radius: 14px;
+  margin-bottom: 10px;
+  box-shadow: 0 3px 14px rgba(0, 60, 100, 0.06);
+  overflow: hidden;
+}
+
+.faq-item summary {
+  padding: 16px 18px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #1b2a3a;
+  cursor: pointer;
+  list-style: none;
+  position: relative;
+  padding-left: 44px;
+}
+
+.faq-item summary::-webkit-details-marker { display: none; }
+
+.faq-item summary::after {
+  content: "＋";
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #0088cc;
+  font-size: 18px;
+  font-weight: bold;
+  transition: 0.2s;
+}
+
+.faq-item[open] summary::after {
+  content: "－";
+}
+
+.faq-item[open] summary {
+  color: #0088cc;
+}
+
+.faq-item p {
+  padding: 0 18px 16px;
+  font-size: 13px;
+  line-height: 2;
+  color: #52627a;
+}
+
+/* ============================================================
+   📌 فوتر
+   ============================================================ */
+
+.site-footer {
+  text-align: center;
+  padding: 30px 20px 40px;
+  color: #7d8e9e;
+  font-size: 13px;
+}
+
+.f-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  opacity: 0.8;
+  margin-bottom: 8px;
+}
+
+/* ============================================================
+   تب‌های صفحه اصلی (اپ)
+   ============================================================ */
 
 .tab-page { display: none; }
 .tab-page.active { display: block; }
@@ -140,7 +443,9 @@ body {
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
-/* ================= مودال‌ها ================= */
+/* ============================================================
+   مودال‌ها
+   ============================================================ */
 
 .modal-overlay {
   display: none;
@@ -207,7 +512,9 @@ body {
 
 .found-user .chat-item { cursor: default; }
 
-/* ================= پیک انتخاب اعضا ================= */
+/* ============================================================
+   پیک انتخاب اعضا
+   ============================================================ */
 
 .member-picker {
   max-height: 220px;
@@ -236,7 +543,9 @@ body {
   accent-color: #0088cc;
 }
 
-/* ================= تنظیمات ================= */
+/* ============================================================
+   تنظیمات
+   ============================================================ */
 
 .settings-box {
   max-width: 420px;
@@ -348,7 +657,9 @@ body {
 .switch input:checked + .slider { background: #0088cc; }
 .switch input:checked + .slider:before { transform: translateX(-22px); }
 
-/* ================= آواتار ================= */
+/* ============================================================
+   آواتار
+   ============================================================ */
 
 .avatar {
   width: 42px;
@@ -391,7 +702,9 @@ body {
   color: #0088cc;
 }
 
-/* ================= هدر ================= */
+/* ============================================================
+   هدر اپ
+   ============================================================ */
 
 .header {
   background: linear-gradient(135deg, #0088cc, #006daa);
@@ -438,7 +751,9 @@ body {
   background: rgba(255, 255, 255, 0.35);
 }
 
-/* ================= نوار عضویت ================= */
+/* ============================================================
+   نوار عضویت
+   ============================================================ */
 
 .join-bar {
   background: white;
@@ -464,7 +779,9 @@ body {
 
 .join-bar button:hover { background: #0077b5; }
 
-/* ================= لیست چت‌ها و مخاطبین ================= */
+/* ============================================================
+   لیست چت‌ها و مخاطبین
+   ============================================================ */
 
 #chat-list, #contact-list { padding: 10px 15px; }
 
@@ -501,8 +818,6 @@ body {
   color: #999;
   margin-top: 40px;
 }
-
-/* ----- سنجاق، بایگانی، بج، زمان ----- */
 
 .chat-mid {
   flex: 1;
@@ -564,8 +879,6 @@ body {
   background: #eef6fb;
 }
 
-/* ----- منوی راست‌کلیک چت‌ها ----- */
-
 #ctx-menu {
   position: fixed;
   display: none;
@@ -597,7 +910,9 @@ body {
   color: #c0392b;
 }
 
-/* ================= صفحه چت ================= */
+/* ============================================================
+   صفحه چت
+   ============================================================ */
 
 #messages {
   height: calc(100vh - 150px);
@@ -637,8 +952,6 @@ body {
   text-align: left;
   margin-top: 4px;
 }
-
-/* ----- کادر ارسال (کامپوزر) ----- */
 
 #composer {
   position: fixed;
@@ -684,8 +997,6 @@ body {
 }
 
 .send-box button:hover { background: #0077b5; }
-
-/* ----- پاسخ (ریپلای) ----- */
 
 .reply-bar {
   display: flex;
@@ -753,8 +1064,6 @@ body {
   text-overflow: ellipsis;
 }
 
-/* ----- ری‌اکشن‌ها ----- */
-
 .rbar {
   display: flex;
   flex-wrap: wrap;
@@ -795,8 +1104,6 @@ body {
 
 .react-row button:hover { background: #f0f2f5; }
 
-/* ----- فوروارد ----- */
-
 .fw-list {
   max-height: 300px;
   overflow-y: auto;
@@ -828,8 +1135,6 @@ body {
   opacity: 0.7;
   margin-bottom: 2px;
 }
-
-/* ----- عکس و صدا ----- */
 
 .msg-img {
   max-width: 260px;
@@ -938,8 +1243,6 @@ body {
 .rec-ok { background: #0088cc; color: white; }
 .rec-cancel { background: #f0f2f5; }
 
-/* ----- اعضای گروه ----- */
-
 .members-list {
   max-height: 200px;
   overflow-y: auto;
@@ -977,8 +1280,6 @@ body {
   cursor: pointer;
 }
 
-/* ----- منوی راست‌کلیک پیام ----- */
-
 #msg-menu {
   position: fixed;
   display: none;
@@ -1005,7 +1306,9 @@ body {
 #msg-menu button:hover { background: #e8f4fb; }
 #msg-menu button.danger { color: #c0392b; }
 
-/* ================= صفحه‌های فرم ================= */
+/* ============================================================
+   صفحه‌های فرم
+   ============================================================ */
 
 .page-box {
   width: 340px;
@@ -1058,10 +1361,106 @@ body {
 }
 
 /* ============================================================
-   🌙 حالت شب
+   📱 موبایل
+   ============================================================ */
+
+@media (max-width: 800px) {
+  .hero-grid {
+    grid-template-columns: 1fr;
+    gap: 26px;
+  }
+
+  .hero-text { text-align: center; }
+
+  .hero-sub { margin: 0 auto 18px; }
+
+  .chips { justify-content: center; }
+
+  .hero-text h1 { font-size: 27px; }
+
+  .sh-nav a { font-size: 13px; padding: 5px 7px; }
+}
+
+/* ============================================================
+   🌙 حالت شب — لندینگ
    ============================================================ */
 
 body.dark { background: #0e1621; }
+
+body.dark .bg-deco {
+  background: linear-gradient(160deg, #101b28 0%, #0e1621 45%, #0d2233 100%);
+}
+
+body.dark .blob { opacity: 0.25; }
+body.dark .b1 { background: #1c5f8a; }
+body.dark .b2 { background: #14405c; }
+body.dark .b3 { background: #1a4a6e; }
+
+body.dark .site-header {
+  background: rgba(23, 33, 43, 0.9);
+  box-shadow: 0 1px 10px rgba(0, 0, 0, 0.4);
+}
+
+body.dark .sh-brand { color: #5eb5f7; }
+
+body.dark .sh-nav a { color: #9db2c4; }
+body.dark .sh-nav a:hover { background: #242f3d; color: #5eb5f7; }
+
+body.dark .hero-text h1 { color: #e8eef5; }
+
+body.dark .hero-sub { color: #9db2c4; }
+
+body.dark .chip {
+  background: rgba(36, 47, 61, 0.8);
+  border-color: #2b3a4a;
+  color: #5eb5f7;
+}
+
+body.dark .login-box {
+  background: #17212b;
+  color: #e8eef5;
+}
+
+body.dark .login-box input {
+  background: #242f3d;
+  border-color: #2b3a4a;
+  color: #e8eef5;
+}
+
+body.dark .tabs .tab {
+  background: #242f3d;
+  color: #c5d3de;
+}
+
+body.dark .tabs .tab.active {
+  background: #0088cc;
+  color: white;
+}
+
+body.dark .sec-title { color: #e8eef5; }
+
+body.dark .feature-card {
+  background: #17212b;
+  box-shadow: none;
+}
+
+body.dark .feature-card h3 { color: #5eb5f7; }
+body.dark .feature-card p { color: #9db2c4; }
+
+body.dark .faq-item {
+  background: #17212b;
+  box-shadow: none;
+}
+
+body.dark .faq-item summary { color: #e8eef5; }
+body.dark .faq-item[open] summary { color: #5eb5f7; }
+body.dark .faq-item p { color: #9db2c4; }
+
+body.dark .site-footer { color: #7d8e9e; }
+
+/* ============================================================
+   🌙 حالت شب — اپ
+   ============================================================ */
 
 body.dark .header {
   background: linear-gradient(135deg, #1f2c3a, #17212b);
@@ -1071,8 +1470,7 @@ body.dark .chat-item,
 body.dark .contact-actions button,
 body.dark .settings-box,
 body.dark .modal,
-body.dark .page-box,
-body.dark .login-box {
+body.dark .page-box {
   background: #17212b;
   color: #e8eef5;
 }
@@ -1093,7 +1491,6 @@ body.dark .modal-label { color: #8fa4b8; }
 body.dark .settings-box input,
 body.dark .modal input,
 body.dark .page-box input,
-body.dark .login-box input,
 body.dark .member-picker {
   background: #242f3d;
   border-color: #2b3a4a;
@@ -1101,16 +1498,6 @@ body.dark .member-picker {
 }
 
 body.dark .member-row:hover { background: #1f2a36; }
-
-body.dark .tabs .tab {
-  background: #242f3d;
-  color: #c5d3de;
-}
-
-body.dark .tabs .tab.active {
-  background: #0088cc;
-  color: white;
-}
 
 body.dark .sep { border-top-color: #2b3a4a; }
 
