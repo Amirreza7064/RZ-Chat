@@ -17,8 +17,8 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// ✏️✏️✏️ این خط را با آدرس واقعی index.html روی سایت خودت عوض کن ✏️✏️✏️
-const SITE_URL = "https://Amirreza7064.github.io/RZ-Chat/index.html";
+// ✏️✏️✏️ آدرس جدید Cloudflare Pages را اینجا بذار ✏️✏️✏️
+const SITE_URL = "https://rz-chat.rz-ai.workers.dev";
 
 function actionCodeSettings(phone) {
   return {
@@ -81,7 +81,7 @@ window.loginUser = async function () {
   }
 };
 
-/* ---------- تب شماره تلفن (لینک ایمیل جای پیامک) ---------- */
+/* ---------- تب شماره تلفن ---------- */
 
 window.phoneLogin = async function () {
   const status = document.getElementById("phone-status");
@@ -99,7 +99,6 @@ window.phoneLogin = async function () {
     const snap = await getDoc(doc(db, "phones", phone));
 
     if (snap.exists()) {
-      /* ----- شماره قبلاً ثبت شده → ورود ----- */
       const email = snap.data().email;
 
       if (emailInput && emailInput !== email) {
@@ -113,7 +112,6 @@ window.phoneLogin = async function () {
       status.textContent = "✉️ لینک ورود به " + maskEmail(email) + " فرستاده شد — ایمیلت را چک کن!";
 
     } else {
-      /* ----- شماره جدید → ثبت‌نام ----- */
       if (!emailInput) {
         status.textContent = "این شماره ثبت نشده؛ برای ثبت‌نام ایمیلت را هم وارد کن.";
         return;
@@ -130,23 +128,20 @@ window.phoneLogin = async function () {
   }
 };
 
-/* ---------- تکمیل خودکار ورود بعد از کلیک روی لینک ایمیل ---------- */
+/* ---------- تکمیل خودکار ورود با لینک ---------- */
 
 window.addEventListener("load", async () => {
   if (!isSignInWithEmailLink(auth, location.href)) return;
 
-  // ایمیل: اول از حافظه، اگر نبود (لینک روی دستگاه دیگر باز شده) بپرس
   let email = localStorage.getItem("emailForSignIn") || prompt("برای تکمیل ورود، ایمیلت را وارد کن:");
   if (!email) return;
   email = email.trim().toLowerCase();
 
-  // شماره: اول از لینک (?phone=...)، بعد از حافظه
   const urlPhone = new URLSearchParams(location.search).get("phone");
   const phone = normalizePhone(urlPhone || localStorage.getItem("phoneForSignIn") || "");
 
   try {
     const cred = await signInWithEmailLink(auth, email, location.href);
-    // لینک اینجا مصرف شد → یک‌بار مصرف بود و تمام ✅
 
     localStorage.removeItem("emailForSignIn");
     localStorage.removeItem("phoneForSignIn");
@@ -156,14 +151,11 @@ window.addEventListener("load", async () => {
       const snap = await getDoc(phoneRef);
 
       if (!snap.exists()) {
-        // ثبت‌نام: اتصال شماره به این حساب
         await setDoc(phoneRef, { uid: cred.user.uid, email: email });
         await createUserProfile(cred.user, phone);
       } else if (snap.data().uid === cred.user.uid) {
-        // ورود: شماره از قبل مال خودش است
         await createUserProfile(cred.user, phone);
       } else {
-        // شماره مال کاربر دیگری است
         await signOut(auth);
         alert("این شماره به حساب دیگری متصل است ❌");
         return;
