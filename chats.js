@@ -155,8 +155,20 @@ async function loadContacts() {
     return;
   }
 
+  /* 🔍 فیلتر مخاطبین بر اساس جستجو (جدید) */
+  const shown = data.filter(c => {
+    if (!contactQuery) return true;
+    return (c.name || "").toLowerCase().includes(contactQuery)
+        || (c.username || "").toLowerCase().includes(contactQuery);
+  });
+
+  if (shown.length === 0) {
+    list.innerHTML = "<p class='empty'>مخاطبی با این اسم پیدا نشد</p>";
+    return;
+  }
+
   let html = "";
-  data.forEach((c) => {
+  shown.forEach((c) => {
     contactsMap[c.contact] = c;
     html += `
       <div class="chat-item" data-contact="${c.contact}" onclick="openPrivateChat('${c.contact}')">
@@ -228,6 +240,12 @@ async function render() {
   pinned.sort(byNewest);
   normal.sort(byNewest);
   archived.sort(byNewest);
+
+  /* 🔍 اگر جستجو فعال باشد، فقط نتایج جستجو نمایش داده می‌شود (جدید) */
+  if (searchQuery) {
+    await renderSearchView(list, { saved, archived, pinned, normal });
+    return;
+  }
 
   let html = "";
 
@@ -347,6 +365,157 @@ async function updateBadges() {
       dotEl.style.display = "none";
     }
   }
+}
+
+/* ---------- 🔍 جستجو در چت‌ها و پیام‌ها (جدید) ---------- */
+
+let searchQuery = "";
+let searchTimer = null;
+let contactQuery = "";
+let msgSearchTimer = null;
+let lastMsgResults = [];
+
+function chatTitleOf(chat) {
+  if (!chat) return "";
+  if (chat.type === "saved") return "پیام‌های ذخیره‌شده";
+  return chat.name || "چت";
+}
+
+async function chatMatches(chat, q) {
+  if (chat.type === "saved") {
+    return "پیام‌های ذخیره‌شده".includes(q)
+      || (chat.last_message || "").toLowerCase().includes(q);
+  }
+  if (chat.type === "private") {
+    const otherUid = (chat.members || []).find(u => u !== myId);
+    if (!otherUid) return false;
+    const info = await getUserInfo(otherUid);
+    return ((info.name || "کاربر").toLowerCase().includes(q))
+        || ((info.username || "").toLowerCase().includes(q));
+  }
+  return ((chat.name || "").toLowerCase().includes(q))
+      || ((chat.description || "").toLowerCase().includes(q))
+      || ((chat.last_message || "").toLowerCase().includes(q));
+}
+
+function hiEsc(text, q) {
+  const t = escapeHTML(text || "");
+  if (!q) return t;
+  const eq = escapeHTML(q).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  try {
+    return t.replace(new RegExp(eq, "gi"), m => `<mark>${m}</mark>`);
+  } catch (e) { return t; }
+}
+
+window.onChatSearchInput = function (el) {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    searchQuery = (el.value || "").trim().toLowerCase();
+    render();
+    clearTimeout(msgSearchTimer);
+    if (searchQuery.length >= 2) {
+      msgSearchTimer = setTimeout(() => fetchGlobalMessages(searchQuery), 350);
+    } else {
+      lastMsgResults = [];
+    }
+  }, 250);
+};
+
+window.onContactSearchInput = function (el) {
+  contactQuery = (el.value || "").trim().toLowerCase();
+  loadContacts();
+};
+
+async function fetchGlobalMessages(q) {
+  try {
+    const ids = Object.keys(chatsMap);
+    if (!ids.length) { lastMsgResults = []; render(); return; }
+
+    const like = q.replace(/%/g, "\\%").replace(/_/g, "\\_");
+    const { data, error } = await sb.from("messages")
+      .select("id,chat_id,text,sender_name,time")
+      .in("chat_id", ids)
+      .or("deleted.is.null,deleted.eq.false")
+      .ilike("text", "%" + like + "%")
+      .order("time", { ascending: false })
+      .limit(30);
+
+    if (error) throw error;
+    lastMsgResults = (data || []).filter(m => m.text);
+    render();
+  } catch (e) {
+    showErr("خطای جستجوی پیام‌ها: " + e.message);
+  }
+}
+
+async function msgResultHTML(m) {
+  const chat = chatsMap[m.chat_id];
+  let title = "چت";
+  if (chat) {
+    if (chat.type === "private") {
+      const otherUid = (chat.members || []).find(u => u !== myId);
+      const info = otherUid ? await getUserInfo(otherUid) : { name: "کاربر" };
+      title = info.name || "کاربر";
+    } else {
+      title = chatTitleOf(chat);
+    }
+  }
+  const t = new Date(m.time);
+  const when = t.toLocaleDateString("fa-IR") + " " + timeStr(m.time);
+
+  return `
+    <div class="chat-item search-msg" onclick="openSearchMsg('${m.chat_id}','${m.id}')">
+      <div class="avatar">💬</div>
+      <div class="chat-mid">
+        <div class="chat-name">${escapeHTML(title)}</div>
+        <div class="chat-last">${escapeHTML(m.sender_name || "کاربر")}: ${hiEsc(m.text, searchQuery)}</div>
+      </div>
+      <div class="chat-side">
+        <div class="chat-time">${when}</div>
+      </div>
+    </div>`;
+}
+
+window.openSearchMsg = function (cid, mid) {
+  location.href = "chat.html?id=" + cid
+    + "&q=" + encodeURIComponent(searchQuery)
+    + "&mid=" + mid;
+};
+
+async function renderSearchView(list, parts) {
+  const q = searchQuery;
+  const pick = async (arr) => {
+    const out = [];
+    for (const [id, chat] of arr) {
+      if (await chatMatches(chat, q)) out.push([id, chat]);
+    }
+    return out;
+  };
+
+  const mp = await pick(parts.pinned);
+  const mn = await pick(parts.normal);
+  const ma = await pick(parts.archived);
+  const savedHit = !!(parts.saved
+    && ("پیام‌های ذخیره‌شده".includes(q)
+      || ((parts.saved[1].last_message || "").toLowerCase().includes(q))));
+
+  let html = "";
+
+  if (lastMsgResults.length > 0) {
+    html += `<div class="search-sec-title">💬 پیام‌ها (${lastMsgResults.length})</div>`;
+    for (const m of lastMsgResults) html += await msgResultHTML(m);
+  }
+
+  const chatHits = [...mp, ...mn, ...ma];
+  if (savedHit || chatHits.length > 0) {
+    html += `<div class="search-sec-title">📌 چت‌ها</div>`;
+  }
+  if (savedHit) html += await itemHTML(parts.saved[0], parts.saved[1]);
+  for (const [id, chat] of chatHits) html += await itemHTML(id, chat);
+
+  if (!html) html = "<p class='empty'>چیزی پیدا نشد 🤷</p>";
+  list.innerHTML = html;
+  updateBadges();
 }
 
 /* ---------- منوی راست‌کلیک ---------- */
