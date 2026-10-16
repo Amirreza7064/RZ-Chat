@@ -1,5 +1,5 @@
 /* ============================================================
-   RZ-Chat — استایل کامل (v6)
+   RZ-Chat — استایل کامل (v7)
    ============================================================ */
 
 * {
@@ -600,7 +600,7 @@ body {
 /* ================= صفحه چت ================= */
 
 #messages {
-  height: calc(100vh - 145px);
+  height: calc(100vh - 150px);
   overflow-y: auto;
   padding: 20px;
 }
@@ -638,18 +638,31 @@ body {
   margin-top: 4px;
 }
 
-.send-box {
+/* ----- کادر ارسال (کامپوزر) ----- */
+
+#composer {
   position: fixed;
   bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+  padding: 8px 12px;
+  display: none;
+  z-index: 40;
+}
+
+#composer .send-box {
+  position: static;
   width: 100%;
   display: flex;
   gap: 10px;
-  padding: 10px 15px;
-  background: white;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.08);
+  padding: 4px 0;
+  background: transparent;
+  box-shadow: none;
 }
 
-.send-box input {
+.send-box input[type="text"] {
   flex: 1;
   padding: 14px 18px;
   border: none;
@@ -671,6 +684,326 @@ body {
 }
 
 .send-box button:hover { background: #0077b5; }
+
+/* ----- پاسخ (ریپلای) ----- */
+
+.reply-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #f0f6fa;
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+}
+
+.rb-line {
+  width: 4px;
+  align-self: stretch;
+  background: #0088cc;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.rb-mid { flex: 1; min-width: 0; }
+
+.reply-name {
+  font-size: 12px;
+  font-weight: bold;
+  color: #0088cc;
+}
+
+.reply-text {
+  font-size: 12px;
+  color: #777;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.rb-x {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #888;
+}
+
+.reply-box {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 8px;
+  border-right: 3px solid #0088cc;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+
+.reply-box .reply-name {
+  font-size: 11px;
+  font-weight: bold;
+  color: #0088cc;
+}
+
+.reply-box .reply-text {
+  font-size: 12px;
+  color: inherit;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ----- ری‌اکشن‌ها ----- */
+
+.rbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.rchip {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.rchip.mine {
+  background: #e8f4fb;
+  outline: 1px solid #0088cc;
+}
+
+.react-row {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.react-row button {
+  width: auto;
+  padding: 4px 8px;
+  font-size: 18px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+.react-row button:hover { background: #f0f2f5; }
+
+/* ----- فوروارد ----- */
+
+.fw-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+
+.fw-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.fw-item:hover { background: #eef6fb; }
+
+.fw-item .avatar {
+  width: 36px;
+  height: 36px;
+  background: #e8f4fb;
+  color: #0088cc;
+}
+
+.fwd-tag {
+  display: block;
+  font-size: 10px;
+  opacity: 0.7;
+  margin-bottom: 2px;
+}
+
+/* ----- عکس و صدا ----- */
+
+.msg-img {
+  max-width: 260px;
+  border-radius: 10px;
+  display: block;
+  cursor: zoom-in;
+  margin-bottom: 4px;
+}
+
+.voice-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vplay {
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 136, 204, 0.15);
+  color: #0088cc;
+  font-size: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.message.mine .vplay {
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+}
+
+.wave {
+  display: flex;
+  align-items: center;
+  height: 34px;
+}
+
+.wave span {
+  width: 3px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+  margin: 0 1px;
+  transition: background 0.1s;
+}
+
+.message.mine .wave span { background: rgba(255, 255, 255, 0.4); }
+.message .wave span.on { background: #0088cc; }
+.message.mine .wave span.on { background: white; }
+
+.voice-dur { font-size: 11px; opacity: 0.7; }
+
+.deleted-msg {
+  color: #999;
+  font-style: italic;
+  font-size: 13px;
+}
+
+.edited { font-size: 9px; }
+
+.msg-flash { animation: flash 1.2s; }
+
+@keyframes flash {
+  0%, 100% { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); }
+  50% { box-shadow: 0 0 0 3px #f1c40f; }
+}
+
+.tool-btn {
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: #f0f2f5;
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.tool-btn:hover { background: #e2e6ea; }
+
+.rec-box { justify-content: flex-start; }
+
+.rec-dot {
+  width: 12px;
+  height: 12px;
+  background: #e74c3c;
+  border-radius: 50%;
+  animation: blink 1s infinite;
+}
+
+@keyframes blink { 50% { opacity: 0.2; } }
+
+#rec-time { font-weight: bold; min-width: 40px; }
+
+.rec-label { flex: 1; font-size: 13px; color: #777; }
+
+.rec-ok, .rec-cancel {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.rec-ok { background: #0088cc; color: white; }
+.rec-cancel { background: #f0f2f5; }
+
+/* ----- اعضای گروه ----- */
+
+.members-list {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 5px;
+}
+
+.member-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+}
+
+.member-line .avatar {
+  width: 34px;
+  height: 34px;
+  background: #e8f4fb;
+  color: #0088cc;
+}
+
+.member-mid { flex: 1; min-width: 0; }
+
+.member-mid .chat-name { font-size: 13px; }
+.member-mid .chat-last { margin-top: 0; }
+
+.crown { font-size: 14px; }
+
+.mini-danger {
+  background: none;
+  border: none;
+  color: #c0392b;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+/* ----- منوی راست‌کلیک پیام ----- */
+
+#msg-menu {
+  position: fixed;
+  display: none;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  z-index: 300;
+  min-width: 190px;
+  overflow: hidden;
+}
+
+#msg-menu button {
+  display: block;
+  width: 100%;
+  text-align: right;
+  padding: 11px 16px;
+  border: none;
+  background: none;
+  font-family: tahoma;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#msg-menu button:hover { background: #e8f4fb; }
+#msg-menu button.danger { color: #c0392b; }
 
 /* ================= صفحه‌های فرم ================= */
 
@@ -723,140 +1056,6 @@ body {
   background: #e0e0e0;
   color: #333;
 }
-
-/* ================= v6: عکس، صدا، پروفایل چت، منوی پیام ================= */
-
-.msg-img {
-  max-width: 260px;
-  border-radius: 10px;
-  display: block;
-  cursor: zoom-in;
-  margin-bottom: 4px;
-}
-
-.voice-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.voice-row audio { height: 36px; max-width: 220px; }
-
-.voice-ic { font-size: 18px; }
-
-.voice-dur { font-size: 11px; opacity: 0.7; }
-
-.deleted-msg {
-  color: #999;
-  font-style: italic;
-  font-size: 13px;
-}
-
-.edited { font-size: 9px; }
-
-.tool-btn {
-  width: 42px;
-  height: 42px;
-  border: none;
-  border-radius: 50%;
-  background: #f0f2f5;
-  font-size: 18px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.tool-btn:hover { background: #e2e6ea; }
-
-.rec-box { justify-content: flex-start; }
-
-.rec-dot {
-  width: 12px;
-  height: 12px;
-  background: #e74c3c;
-  border-radius: 50%;
-  animation: blink 1s infinite;
-}
-
-@keyframes blink { 50% { opacity: 0.2; } }
-
-#rec-time { font-weight: bold; min-width: 40px; }
-
-.rec-label { flex: 1; font-size: 13px; color: #777; }
-
-.rec-ok, .rec-cancel {
-  width: 44px;
-  height: 44px;
-  border: none;
-  border-radius: 50%;
-  font-size: 18px;
-  cursor: pointer;
-}
-
-.rec-ok { background: #0088cc; color: white; }
-.rec-cancel { background: #f0f2f5; }
-
-.members-list {
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #eee;
-  border-radius: 10px;
-  padding: 5px;
-}
-
-.member-line {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-}
-
-.member-line .avatar {
-  width: 34px;
-  height: 34px;
-  background: #e8f4fb;
-  color: #0088cc;
-}
-
-.member-mid { flex: 1; min-width: 0; }
-
-.member-mid .chat-name { font-size: 13px; }
-.member-mid .chat-last { margin-top: 0; }
-
-.crown { font-size: 14px; }
-
-.mini-danger {
-  background: none;
-  border: none;
-  color: #c0392b;
-  font-size: 15px;
-  cursor: pointer;
-}
-
-#msg-menu {
-  position: fixed;
-  display: none;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
-  z-index: 300;
-  min-width: 180px;
-  overflow: hidden;
-}
-
-#msg-menu button {
-  display: block;
-  width: 100%;
-  text-align: right;
-  padding: 11px 16px;
-  border: none;
-  background: none;
-  font-family: tahoma;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-#msg-menu button:hover { background: #e8f4fb; }
-#msg-menu button.danger { color: #c0392b; }
 
 /* ============================================================
    🌙 حالت شب
@@ -940,12 +1139,34 @@ body.dark .message.mine {
 
 body.dark .sender { color: #5eb5f7; }
 
-body.dark .send-box { background: #17212b; }
+body.dark #composer { background: #17212b; }
 
-body.dark .send-box input {
+body.dark #composer .send-box input[type="text"] {
   background: #242f3d;
   color: #e8eef5;
 }
+
+body.dark .reply-bar { background: #1f2a36; }
+body.dark .reply-text { color: #7d8e9e; }
+
+body.dark .reply-box { background: rgba(255, 255, 255, 0.06); }
+
+body.dark .rchip { background: rgba(255, 255, 255, 0.08); }
+body.dark .rchip.mine { background: #24364a; outline-color: #5eb5f7; }
+
+body.dark .react-row { border-bottom-color: #2b3a4a; }
+body.dark .react-row button:hover { background: #242f3d; }
+
+body.dark .fw-item:hover { background: #1f2a36; }
+body.dark .fw-item .avatar { background: #242f3d; color: #5eb5f7; }
+
+body.dark .wave span { background: rgba(255, 255, 255, 0.15); }
+body.dark .message.mine .wave span { background: rgba(255, 255, 255, 0.4); }
+body.dark .message .wave span.on { background: #5eb5f7; }
+body.dark .message.mine .wave span.on { background: white; }
+
+body.dark .vplay { background: rgba(94, 181, 247, 0.15); color: #5eb5f7; }
+body.dark .message.mine .vplay { background: rgba(255, 255, 255, 0.25); color: white; }
 
 body.dark .fab {
   background: #2b6da8;
