@@ -1,0 +1,13 @@
+{
+  "name": "RZ-Chat",
+  "short_name": "RZ-Chat",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "dir": "rtl",
+  "lang": "fa",
+  "background_color": "#e7ebf0",
+  "theme_color": "#0088cc",
+  "icons": [
+    { "src": "logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}
