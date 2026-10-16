@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0088cc">
 <link rel="manifest" href="manifest.json">
 <title>RZ-Chat</title>
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 
@@ -23,6 +23,13 @@
         <button id="logout-btn" onclick="logout()">خروج</button>
     </header>
 
+    <!-- 🔍 جستجو در چت‌ها و پیام‌ها (جدید) -->
+    <div class="search-wrap">
+        <span class="search-ic">🔍</span>
+        <input id="chat-search" type="text" placeholder="جستجو در چت‌ها و پیام‌ها..."
+            oninput="onChatSearchInput(this)">
+    </div>
+
     <div id="chat-list"></div>
 
     <button class="fab" onclick="showTab('contacts')" title="مخاطبین">＋</button>
@@ -36,6 +43,13 @@
             <div><h1>مخاطبین</h1></div>
         </div>
     </header>
+
+    <!-- 🔍 جستجو در مخاطبین (جدید) -->
+    <div class="search-wrap">
+        <span class="search-ic">🔍</span>
+        <input id="contact-search" type="text" placeholder="جستجوی مخاطبین..."
+            oninput="onContactSearchInput(this)">
+    </div>
 
     <div class="contact-actions">
         <button onclick="location.href='create.html?type=group'">👥 ساخت گروه</button>
@@ -121,7 +135,7 @@
 <div id="ctx-menu"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script type="module" src="chats.js?v=9"></script>
+<script type="module" src="chats.js?v=10"></script>
 <script>
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(() => {});
