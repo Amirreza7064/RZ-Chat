@@ -8,7 +8,38 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/svg+xml" href="logo.svg">
 <title>RZ-Chat — پیام‌رسان رایگان</title>
-<link rel="stylesheet" href="style.css?v=9">
+<link rel="stylesheet" href="style.css?v=10">
+<style>
+  /* ---------- ✨ انیمیشن ورود نرم بخش‌های پایین (جدید) ---------- */
+  .reveal {
+    opacity: 0;
+    translate: 0 30px;
+    transition: opacity .8s cubic-bezier(.2,.6,.2,1), translate .8s cubic-bezier(.2,.6,.2,1);
+  }
+  .reveal.in {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  /* تاخیر پله‌ای کارت‌های ویژگی */
+  .feature-grid .reveal:nth-child(2) { transition-delay: .08s; }
+  .feature-grid .reveal:nth-child(3) { transition-delay: .16s; }
+  .feature-grid .reveal:nth-child(4) { transition-delay: .24s; }
+  .feature-grid .reveal:nth-child(5) { transition-delay: .32s; }
+  .feature-grid .reveal:nth-child(6) { transition-delay: .40s; }
+
+  /* تاخیر پله‌ای سوالات متداول */
+  .faq .reveal:nth-child(3) { transition-delay: .06s; }
+  .faq .reveal:nth-child(4) { transition-delay: .12s; }
+  .faq .reveal:nth-child(5) { transition-delay: .18s; }
+  .faq .reveal:nth-child(6) { transition-delay: .24s; }
+  .faq .reveal:nth-child(7) { transition-delay: .30s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; translate: none; transition: none; }
+  }
+</style>
+<noscript><style>.reveal{opacity:1;translate:none}</style></noscript>
 </head>
 <body>
 
@@ -30,6 +61,7 @@
         </div>
         <nav class="sh-nav">
             <a href="#features">ویژگی‌ها</a>
+            <a href="install.html">دانلود</a>
             <a href="#faq">سوالات متداول</a>
         </nav>
     </div>
@@ -88,41 +120,41 @@
 
 <!-- ============ ویژگی‌ها ============ -->
 <section class="features" id="features">
-    <h2 class="sec-title">چرا RZ-Chat؟</h2>
+    <h2 class="sec-title reveal">چرا RZ-Chat؟</h2>
 
     <div class="feature-grid">
 
-        <div class="feature-card">
+        <div class="feature-card reveal">
             <div class="f-ic">🆓</div>
             <h3>کاملاً رایگان</h3>
             <p>نه اشتراک، نه هزینه پیامک، نه محدودیت. همه‌چیز رایگانه!</p>
         </div>
 
-        <div class="feature-card">
+        <div class="feature-card reveal">
             <div class="f-ic">👥</div>
             <h3>گروه و کانال</h3>
             <p>گروه بساز، کانال تأسیس کن، با لینک دعوت عضو اضافه کن.</p>
         </div>
 
-        <div class="feature-card">
+        <div class="feature-card reveal">
             <div class="f-ic">🎤</div>
             <h3>پیام صوتی</h3>
             <p>صدا ضبط کن، با نمایش موج تلگرامی بفرست و گوش بده.</p>
         </div>
 
-        <div class="feature-card">
+        <div class="feature-card reveal">
             <div class="f-ic">🖼️</div>
             <h3>عکس و ری‌اکشن</h3>
             <p>عکس بفرست، به پیام‌ها ایموجی بده، ریپلای و فوروارد کن.</p>
         </div>
 
-        <div class="feature-card">
+        <div class="feature-card reveal">
             <div class="f-ic">📱</div>
             <h3>مثل اپ نصب می‌شود</h3>
             <p>از مرورگر گوشی، RZ-Chat را مثل یک اپ واقعی نصب کن (PWA).</p>
         </div>
 
-        <div class="feature-card">
+        <div class="feature-card reveal">
             <div class="f-ic">🔔</div>
             <h3>اعلان هوشمند</h3>
             <p>پیام جدید؟ اعلان می‌آید؛ حتی وقتی توی چت دیگری هستی.</p>
@@ -133,34 +165,34 @@
 
 <!-- ============ سوالات متداول ============ -->
 <section class="faq" id="faq">
-    <h2 class="sec-title">سوالات متداول</h2>
+    <h2 class="sec-title reveal">سوالات متداول</h2>
 
-    <details class="faq-item">
+    <details class="faq-item reveal">
         <summary>آیا RZ-Chat واقعاً رایگان است؟</summary>
         <p>بله! ثبت‌نام، چت، گروه، کانال و همه قابلیت‌ها رایگان‌اند و هیچ اشتراکی هم وجود ندارد.</p>
     </details>
 
-    <details class="faq-item">
+    <details class="faq-item reveal">
         <summary>چطور با شماره تلفن وارد شوم؟</summary>
         <p>تب «شماره تلفن» را بزن، شماره‌ات را وارد کن و ایمیلت را هم بنویس. یک لینک ورود به ایمیلت می‌آید — رویش کلیک کنی وارد می‌شوی. بدون پیامک و بدون رمز!</p>
     </details>
 
-    <details class="faq-item">
+    <details class="faq-item reveal">
         <summary>ایمیل تأیید یا لینک ورود برایم نیامد!</summary>
         <p>پوشه <b>Spam / Junk</b> ایمیلت را چک کن و آن را «Not Spam» علامت بزن. گاهی هم ارسال ایمیل ۱-۲ دقیقه طول می‌کشد.</p>
     </details>
 
-    <details class="faq-item">
+    <details class="faq-item reveal">
         <summary>اطلاعات من امن است؟</summary>
         <p>رمز عبور تو هرگز ذخیره و نمایش داده نمی‌شود و پیام‌ها فقط برای اعضای همان چت قابل خواندن‌اند. ورود با شماره هم از طریق لینک اختصاصی و یک‌بارمصرف انجام می‌شود.</p>
     </details>
 
-    <details class="faq-item">
+    <details class="faq-item reveal">
         <summary>چطور گروه یا کانال بسازم؟</summary>
         <p>بعد از ورود، دکمه ＋ پایین صفحه را بزن و «ساخت گروه» یا «ساخت کانال» را انتخاب کن. می‌توانی از مخاطبین عضو اضافه کنی یا با لینک دعوت آدم بیاری.</p>
     </details>
 
-    <details class="faq-item">
+    <details class="faq-item reveal">
         <summary>روی گوشی چطور نصبش کنم؟</summary>
         <p>سایت را با کروم (اندروید) یا سافاری (آیفون) باز کن، از منوی مرورگر گزینه «Add to Home screen / نصب برنامه» را بزن — مثل یک اپ واقعی می‌شود!</p>
     </details>
@@ -168,12 +200,34 @@
 </section>
 
 <!-- ============ فوتر ============ -->
-<footer class="site-footer">
+<footer class="site-footer reveal">
     <img src="logo.svg" alt="" class="f-logo">
     <p>RZ-Chat — ساخته شده با 💙</p>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script type="module" src="login.js?v=9"></script>
+<script>
+/* ---------- ✨ نمایان‌شدن نرم بخش‌ها هنگام اسکرول (جدید) ---------- */
+(function () {
+  var els = document.querySelectorAll(".reveal");
+  if (!els.length) return;
+
+  if (!("IntersectionObserver" in window)) {
+    els.forEach(function (e) { e.classList.add("in"); });
+    return;
+  }
+
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (en) {
+      if (!en.isIntersecting) return;
+      en.target.classList.add("in");
+      io.unobserve(en.target);
+    });
+  }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
+
+  els.forEach(function (e) { io.observe(e); });
+})();
+</script>
 </body>
 </html>
