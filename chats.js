@@ -1,17 +1,6 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {
-  getFirestore, collection, query, where, limit, getDocs,
-  onSnapshot, doc, getDoc, setDoc, updateDoc, deleteDoc,
-  arrayRemove, getCountFromServer
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { firebaseConfig } from "./firebase.js";
+import { sb, initAuth, doLogout, escapeHTML, renderAvatar, avatarHTML, getUserInfo, getMyId, getMe } from './auth.js';
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-let me = null;
+let myId = null;
 let myData = {};
 let chatsMap = {};
 let metaMap = {};
@@ -21,10 +10,9 @@ const userCache = {};
 
 let prevTimes = {};
 let firstChatsLoad = true;
+let chatsThrottle = false;
 
 if (localStorage.getItem("dark") === "1") document.body.classList.add("dark");
-
-/* ---------- نمایش خطا ---------- */
 
 const errBanner = document.createElement("div");
 errBanner.style.cssText =
@@ -41,152 +29,170 @@ function showErr(msg) {
 
 window.addEventListener("unhandledrejection", (e) => {
   const r = e.reason;
-  showErr((r && (r.code || r.message)) || String(r));
+  showErr((r && (r.message || r.code)) || String(r));
 });
-
-/* ---------- ابزارها ---------- */
-
-function escapeHTML(str) {
-  const div = document.createElement("div");
-  div.textContent = str || "";
-  return div.innerHTML;
-}
-
-function renderAvatar(el, data) {
-  if (!el) return;
-  if (data && data.photo) {
-    el.innerHTML = `<img src="${data.photo}" alt="">`;
-  } else {
-    el.textContent = ((data && data.name) || "؟").charAt(0);
-  }
-}
-
-function avatarHTML(data) {
-  const tmp = document.createElement("div");
-  renderAvatar(tmp, data);
-  return tmp.innerHTML;
-}
-
-async function getUserInfo(uid) {
-  if (userCache[uid]) return userCache[uid];
-  const s = await getDoc(doc(db, "users", uid));
-  const d = s.exists() ? s.data() : { name: "کاربر" };
-  userCache[uid] = d;
-  return d;
-}
 
 function timeStr(t) {
   if (!t) return "";
   return new Date(t).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" });
 }
 
-const lastTime = (chat) => chat.lastMessageTime || chat.createdAt || 0;
+const lastTime = (chat) => chat.last_message_time || chat.created_at || 0;
 const byNewest = (a, b) => lastTime(b[1]) - lastTime(a[1]);
 
 /* ---------- شروع ---------- */
 
-onAuthStateChanged(auth, async (user) => {
-  try {
-    if (!user) {
-      location.href = "index.html";
-      return;
-    }
-    me = user;
+async function start() {
+  if (!await initAuth()) return;
+  myId = getMyId();
+  myData = getMe();
 
-    const required = ["my-avatar", "user-name", "chat-list", "contact-list",
-                      "set-name", "set-username", "set-bio", "set-avatar",
-                      "info-email", "info-phone", "dark-toggle", "ctx-menu"];
-    const missing = required.filter(id => !document.getElementById(id));
-    if (missing.length > 0) {
-      showErr("فایل chats.html قدیمی است! نسخه جدید را در ریپو بگذار. (گم‌شده: " + missing.join(", ") + ")");
-      return;
-    }
-
-    const snap = await getDoc(doc(db, "users", user.uid));
-    myData = snap.exists() ? snap.data() : {};
-
-    renderAvatar(document.getElementById("my-avatar"), myData);
-    document.getElementById("user-name").textContent = myData.name || "کاربر";
-
-    document.getElementById("set-name").value = myData.name || "";
-    document.getElementById("set-username").value = myData.username || "";
-    document.getElementById("set-bio").value = myData.bio || "";
-    renderAvatar(document.getElementById("set-avatar"), myData);
-    document.getElementById("info-email").textContent = myData.email || "—";
-    document.getElementById("info-phone").textContent = myData.phone || "—";
-    document.getElementById("dark-toggle").checked =
-      localStorage.getItem("dark") === "1";
-
-    await setDoc(doc(db, "chats", "saved_" + user.uid), {
-      type: "saved",
-      members: [user.uid],
-      createdBy: user.uid,
-      lastMessage: "",
-      lastMessageTime: 0,
-      createdAt: Date.now()
-    }, { merge: true });
-
-    listenChats();
-    listenMeta();
-    listenContacts();
-
-  } catch (e) {
-    showErr("خطای بارگذاری: " + (e.code || e.message));
+  const required = ["my-avatar", "user-name", "chat-list", "contact-list",
+                    "set-name", "set-username", "set-bio", "set-avatar",
+                    "info-email", "info-phone", "dark-toggle", "ctx-menu"];
+  const missing = required.filter(id => !document.getElementById(id));
+  if (missing.length > 0) {
+    showErr("chats.html قدیمی است! (گم‌شده: " + missing.join(", ") + ")");
+    return;
   }
-});
 
-/* ---------- تب‌ها و خروج ---------- */
+  renderAvatar(document.getElementById("my-avatar"), myData);
+  document.getElementById("user-name").textContent = myData.name || "کاربر";
 
-window.showTab = function (tab) {
-  document.querySelectorAll(".tab-page").forEach(p => p.classList.remove("active"));
-  const el = document.getElementById("tab-" + tab);
-  if (el) el.classList.add("active");
-  window.scrollTo(0, 0);
-};
+  document.getElementById("set-name").value = myData.name || "";
+  document.getElementById("set-username").value = myData.username || "";
+  document.getElementById("set-bio").value = myData.bio || "";
+  renderAvatar(document.getElementById("set-avatar"), myData);
+  document.getElementById("info-email").textContent = myData.email || "—";
+  document.getElementById("info-phone").textContent = myData.phone || "—";
+  document.getElementById("dark-toggle").checked =
+    localStorage.getItem("dark") === "1";
 
-window.logout = async function () {
-  await signOut(auth);
-  location.href = "index.html";
-};
+  await ensureSaved();
 
-/* ---------- لیست چت‌ها + اعلان ---------- */
+  await loadChats();
+  loadMeta();
+  loadContacts();
 
-function listenChats() {
-  const q = query(collection(db, "chats"), where("members", "array-contains", me.uid));
-  onSnapshot(q, (snap) => {
+  sb.channel("chats-all")
+    .on("postgres_changes", { event: "*", schema: "public", table: "chats" },
+      () => scheduleChatsReload())
+    .subscribe();
+
+  sb.channel("meta-" + myId)
+    .on("postgres_changes",
+      { event: "*", schema: "public", table: "chat_meta", filter: "user_id=eq." + myId },
+      () => loadMeta())
+    .subscribe();
+
+  sb.channel("contacts-" + myId)
+    .on("postgres_changes",
+      { event: "*", schema: "public", table: "contacts", filter: "owner=eq." + myId },
+      () => loadContacts())
+    .subscribe();
+}
+
+function scheduleChatsReload() {
+  if (chatsThrottle) return;
+  chatsThrottle = true;
+  setTimeout(() => { chatsThrottle = false; loadChats(); }, 400);
+}
+
+async function ensureSaved() {
+  const { data } = await sb.from("chats").select("id")
+    .eq("type", "saved").eq("created_by", myId).maybeSingle();
+  if (!data) {
+    await sb.from("chats").insert({
+      type: "saved", members: [myId], admins: [myId],
+      created_by: myId, name: "پیام‌های ذخیره‌شده"
+    });
+  }
+}
+
+/* ---------- بارگذاری‌ها ---------- */
+
+async function loadChats() {
+  try {
+    const { data, error } = await sb.from("chats")
+      .select("*").contains("members", [myId]);
+    if (error) throw error;
+
     chatsMap = {};
-    snap.forEach(d => { chatsMap[d.id] = d.data(); });
+    (data || []).forEach(c => { chatsMap[c.id] = c; });
 
     if (!firstChatsLoad) maybeNotify(chatsMap);
     firstChatsLoad = false;
     prevTimes = {};
-    Object.entries(chatsMap).forEach(([id, c]) => { prevTimes[id] = c.lastMessageTime || 0; });
+    Object.entries(chatsMap).forEach(([id, c]) => { prevTimes[id] = c.last_message_time || 0; });
 
     render();
-  }, (err) => showErr("خطای دیتابیس (چت‌ها): " + err.code));
+  } catch (e) {
+    showErr("خطای دیتابیس (چت‌ها): " + e.message);
+  }
 }
+
+async function loadMeta() {
+  const { data, error } = await sb.from("chat_meta")
+    .select("*").eq("user_id", myId);
+  if (error) { showErr("خطای متادیتا: " + error.message); return; }
+
+  metaMap = {};
+  (data || []).forEach(m => { metaMap[m.chat_id] = m; });
+  render();
+}
+
+async function loadContacts() {
+  const list = document.getElementById("contact-list");
+  const { data, error } = await sb.from("contacts")
+    .select("*").eq("owner", myId);
+
+  if (error) { showErr("خطای مخاطبین: " + error.message); return; }
+
+  contactsMap = {};
+
+  if (!data || data.length === 0) {
+    list.innerHTML = "<p class='empty'>مخاطبی نداری! دکمه ＋ پایین را بزن</p>";
+    return;
+  }
+
+  let html = "";
+  data.forEach((c) => {
+    contactsMap[c.contact] = c;
+    html += `
+      <div class="chat-item" data-contact="${c.contact}" onclick="openPrivateChat('${c.contact}')">
+        <div class="avatar">${avatarHTML(c)}</div>
+        <div>
+          <div class="chat-name">${escapeHTML(c.name)}</div>
+          <div class="chat-last">${c.username ? "@" + escapeHTML(c.username) : "چت خصوصی"}</div>
+        </div>
+      </div>`;
+  });
+  list.innerHTML = html;
+}
+
+/* ---------- اعلان ---------- */
 
 async function maybeNotify(newMap) {
   if (!("Notification" in window) || Notification.permission !== "granted") return;
 
   for (const [id, chat] of Object.entries(newMap)) {
-    if (id === "saved_" + me.uid) continue;
+    if (id === getSavedId()) continue;
     if ((metaMap[id] || {}).archived) continue;
 
-    const t = chat.lastMessageTime || 0;
+    const t = chat.last_message_time || 0;
     if (t <= (prevTimes[id] || 0)) continue;
-    if (!chat.lastMessageSender || chat.lastMessageSender === me.uid) continue;
+    if (!chat.last_message_sender || chat.last_message_sender === myId) continue;
 
     let title = chat.name || "پیام جدید";
-    let body = chat.lastMessage || "";
+    let body = chat.last_message || "";
 
     try {
       if (chat.type === "private") {
-        const other = (chat.members || []).find(u => u !== me.uid);
+        const other = (chat.members || []).find(u => u !== myId);
         const info = await getUserInfo(other);
         title = info.name || "پیام جدید";
       } else if (chat.type === "group") {
-        const s = await getUserInfo(chat.lastMessageSender);
+        const s = await getUserInfo(chat.last_message_sender);
         if (s.name) body = s.name + ": " + body;
       }
     } catch (e) { /* ignore */ }
@@ -198,57 +204,22 @@ async function maybeNotify(newMap) {
   }
 }
 
-/* ---------- متادیتا (سنجاق/بایگانی/خوانده‌نشده) ---------- */
-
-function listenMeta() {
-  const q = collection(db, "users", me.uid, "chatMeta");
-  onSnapshot(q, (snap) => {
-    metaMap = {};
-    snap.forEach(d => { metaMap[d.id] = d.data(); });
-    render();
-  }, (err) => showErr("خطای دیتابیس (متادیتا): " + err.code));
+function getSavedId() {
+  for (const [id, c] of Object.entries(chatsMap)) {
+    if (c.type === "saved" && c.created_by === myId) return id;
+  }
+  return null;
 }
 
-/* ---------- مخاطبین ---------- */
-
-function listenContacts() {
-  const list = document.getElementById("contact-list");
-  list.innerHTML = "<p class='empty'>⏳ در حال بارگذاری مخاطبین...</p>";
-
-  const q = collection(db, "users", me.uid, "contacts");
-  onSnapshot(q, (snapshot) => {
-    contactsMap = {};
-
-    if (snapshot.empty) {
-      list.innerHTML = "<p class='empty'>مخاطبی نداری! دکمه ＋ پایین را بزن</p>";
-      return;
-    }
-
-    let html = "";
-    snapshot.forEach((docSnap) => {
-      const c = docSnap.data();
-      contactsMap[docSnap.id] = c;
-      html += `
-        <div class="chat-item" data-contact="${docSnap.id}" onclick="openPrivateChat('${docSnap.id}')">
-          <div class="avatar">${avatarHTML(c)}</div>
-          <div>
-            <div class="chat-name">${escapeHTML(c.name)}</div>
-            <div class="chat-last">${c.username ? "@" + escapeHTML(c.username) : "چت خصوصی"}</div>
-          </div>
-        </div>`;
-    });
-    list.innerHTML = html;
-  }, (err) => showErr("خطای دیتابیس (مخاطبین): " + err.code));
-}
-
-/* ---------- رندر لیست چت‌ها ---------- */
+/* ---------- رندر ---------- */
 
 async function render() {
   const list = document.getElementById("chat-list");
   const entries = Object.entries(chatsMap);
+  const savedId = getSavedId();
 
-  const saved = entries.find(([id]) => id === "saved_" + me.uid);
-  const rest = entries.filter(([id]) => id !== "saved_" + me.uid);
+  const saved = entries.find(([id]) => id === savedId);
+  const rest = entries.filter(([id]) => id !== savedId);
 
   const archived = rest.filter(([id]) => (metaMap[id] || {}).archived);
   const pinned   = rest.filter(([id]) => (metaMap[id] || {}).pinned && !(metaMap[id] || {}).archived);
@@ -266,13 +237,8 @@ async function render() {
         <div class="avatar">→</div>
         <div><div class="chat-name">بازگشت به چت‌ها</div></div>
       </div>`;
-
-    if (archived.length === 0) {
-      html += "<p class='empty'>بایگانی خالی است</p>";
-    }
-    for (const [id, chat] of archived) {
-      html += await itemHTML(id, chat);
-    }
+    if (archived.length === 0) html += "<p class='empty'>بایگانی خالی است</p>";
+    for (const [id, chat] of archived) html += await itemHTML(id, chat);
 
   } else {
     if (saved) {
@@ -282,14 +248,12 @@ async function render() {
           <div class="avatar">🔖</div>
           <div>
             <div class="chat-name">پیام‌های ذخیره‌شده</div>
-            <div class="chat-last">${escapeHTML(c.lastMessage || "پیام‌های خودت اینجاست...")}</div>
+            <div class="chat-last">${escapeHTML(c.last_message || "پیام‌های خودت اینجاست...")}</div>
           </div>
         </div>`;
     }
 
-    for (const [id, chat] of pinned) {
-      html += await itemHTML(id, chat);
-    }
+    for (const [id, chat] of pinned) html += await itemHTML(id, chat);
 
     if (archived.length > 0) {
       html += `
@@ -302,9 +266,7 @@ async function render() {
         </div>`;
     }
 
-    for (const [id, chat] of normal) {
-      html += await itemHTML(id, chat);
-    }
+    for (const [id, chat] of normal) html += await itemHTML(id, chat);
 
     if (!saved && entries.length === 0) {
       html = "<p class='empty'>چتی نداری! دکمه ＋ پایین را بزن 👇</p>";
@@ -320,7 +282,7 @@ async function itemHTML(id, chat) {
   let iconHtml, title;
 
   if (chat.type === "private") {
-    const otherUid = (chat.members || []).find(u => u !== me.uid);
+    const otherUid = (chat.members || []).find(u => u !== myId);
     const info = otherUid ? await getUserInfo(otherUid) : { name: "کاربر" };
     iconHtml = avatarHTML(info);
     title = info.name || "کاربر";
@@ -339,7 +301,7 @@ async function itemHTML(id, chat) {
       <div class="avatar">${iconHtml}</div>
       <div class="chat-mid">
         <div class="chat-name">${pin}${escapeHTML(title)}</div>
-        <div class="chat-last">${escapeHTML(chat.lastMessage || "...")}</div>
+        <div class="chat-last">${escapeHTML(chat.last_message || "...")}</div>
       </div>
       <div class="chat-side">
         <div class="chat-time">${timeStr(lastTime(chat))}</div>
@@ -348,8 +310,6 @@ async function itemHTML(id, chat) {
       </div>
     </div>`;
 }
-
-/* ---------- شمارنده پیام خوانده‌نشده ---------- */
 
 async function updateBadges() {
   const items = document.querySelectorAll("#chat-list .chat-item[data-chat]");
@@ -364,18 +324,18 @@ async function updateBadges() {
     if (!dotEl || !bdEl) continue;
 
     let count = 0;
-    const lastRead = meta.lastReadTime || 0;
+    const lastRead = meta.last_read_time || 0;
 
     if (lastTime(chat) > lastRead) {
       try {
-        const snap = await getCountFromServer(
-          query(collection(db, "chats", id, "messages"), where("time", ">", lastRead))
-        );
-        count = snap.data().count;
-      } catch (e) { /* بی‌خیال شمارش */ }
+        const { count: c } = await sb.from("messages")
+          .select("id", { count: "exact", head: true })
+          .eq("chat_id", id).gt("time", lastRead);
+        count = c || 0;
+      } catch (e) { /* ignore */ }
     }
 
-    if (meta.markUnread) {
+    if (meta.mark_unread) {
       dotEl.style.display = "inline-block";
       bdEl.style.display = "none";
     } else if (count > 0) {
@@ -409,7 +369,6 @@ document.addEventListener("contextmenu", (e) => {
     const uid = contactItem.getAttribute("data-contact");
     html += `<button onclick="ctxRenameContact('${uid}')">✏️ تغییر نام مخاطب</button>`;
     html += `<button class="danger" onclick="ctxRemoveContact('${uid}')">🗑 حذف از مخاطبین</button>`;
-
   } else {
     const id = chatItem.getAttribute("data-chat");
     const chat = chatsMap[id];
@@ -426,7 +385,7 @@ document.addEventListener("contextmenu", (e) => {
       ? `<button onclick="ctxUnarchive('${id}')">📤 خروج از بایگانی</button>`
       : `<button onclick="ctxArchive('${id}')">📥 بایگانی کردن</button>`;
 
-    html += meta.markUnread
+    html += meta.mark_unread
       ? `<button onclick="ctxMarkRead('${id}')">✅ علامت‌گذاری به عنوان خوانده‌شده</button>`
       : `<button onclick="ctxMarkUnread('${id}')">🔵 علامت‌گذاری به عنوان خوانده‌نشده</button>`;
 
@@ -445,15 +404,19 @@ document.addEventListener("click", () => { ctxMenu.style.display = "none"; });
 document.addEventListener("scroll", () => { ctxMenu.style.display = "none"; }, true);
 
 async function setMeta(chatId, fields) {
-  await setDoc(doc(db, "users", me.uid, "chatMeta", chatId), fields, { merge: true });
+  const cur = metaMap[chatId] || {};
+  await sb.from("chat_meta").upsert(
+    { user_id: myId, chat_id: chatId, ...cur, ...fields },
+    { onConflict: "user_id,chat_id" }
+  );
 }
 
-window.ctxPin       = (id) => setMeta(id, { pinned: true, pinnedAt: Date.now() });
+window.ctxPin       = (id) => setMeta(id, { pinned: true });
 window.ctxUnpin     = (id) => setMeta(id, { pinned: false });
 window.ctxArchive   = (id) => setMeta(id, { archived: true });
 window.ctxUnarchive = (id) => setMeta(id, { archived: false });
-window.ctxMarkUnread = (id) => setMeta(id, { markUnread: true });
-window.ctxMarkRead  = (id) => setMeta(id, { markUnread: false });
+window.ctxMarkUnread = (id) => setMeta(id, { mark_unread: true });
+window.ctxMarkRead  = (id) => setMeta(id, { mark_unread: false });
 
 window.ctxDelete = async function (id) {
   const chat = chatsMap[id];
@@ -463,11 +426,9 @@ window.ctxDelete = async function (id) {
     : "از این گروه/کانال خارج شوی؟";
   if (!confirm(msg)) return;
 
-  await updateDoc(doc(db, "chats", id), { members: arrayRemove(me.uid) });
-  await deleteDoc(doc(db, "users", me.uid, "chatMeta", id));
+  const { error } = await sb.rpc("leave_chat", { p_chat: id });
+  if (error) showErr("حذف نشد: " + error.message);
 };
-
-/* ---------- تغییر نام و حذف مخاطب ---------- */
 
 window.ctxRenameContact = async function (uid) {
   const c = contactsMap[uid];
@@ -475,49 +436,46 @@ window.ctxRenameContact = async function (uid) {
   const newName = prompt("اسم جدید برای این مخاطب:", c.name || "");
   if (newName === null) return;
   const name = newName.trim();
-  if (!name) {
-    alert("اسم نمی‌تواند خالی باشد");
-    return;
-  }
-  await updateDoc(doc(db, "users", me.uid, "contacts", uid), { name });
+  if (!name) { alert("اسم نمی‌تواند خالی باشد"); return; }
+  await sb.from("contacts").update({ name })
+    .eq("owner", myId).eq("contact", uid);
 };
 
 window.ctxRemoveContact = async function (uid) {
   if (!confirm("این مخاطب از لیستت حذف شود؟ (چت‌هایتان پاک نمی‌شود)")) return;
-  await deleteDoc(doc(db, "users", me.uid, "contacts", uid));
+  await sb.from("contacts").delete().eq("owner", myId).eq("contact", uid);
 };
 
 /* ---------- ناوبری ---------- */
 
-window.openChat = function (id) {
-  location.href = "chat.html?id=" + id;
-};
-
+window.openChat = function (id) { location.href = "chat.html?id=" + id; };
 window.showArchivedView = function () { currentView = "archived"; render(); };
 window.showMainView = function () { currentView = "main"; render(); };
 
-/* ---------- چت خصوصی از مخاطبین ---------- */
+window.showTab = function (tab) {
+  document.querySelectorAll(".tab-page").forEach(p => p.classList.remove("active"));
+  const el = document.getElementById("tab-" + tab);
+  if (el) el.classList.add("active");
+  window.scrollTo(0, 0);
+};
+
+window.logout = function () { return doLogout(); };
 
 window.openPrivateChat = async function (contactUid) {
-  const key = [me.uid, contactUid].sort().join("_");
-  const chatId = "private_" + key;
-  const ref = doc(db, "chats", chatId);
-  const snap = await getDoc(ref);
+  const { data } = await sb.from("chats").select("id")
+    .eq("type", "private").contains("members", [myId, contactUid]).maybeSingle();
 
-  if (!snap.exists()) {
-    await setDoc(ref, {
-      type: "private",
-      members: [me.uid, contactUid],
-      createdBy: me.uid,
-      lastMessage: "",
-      lastMessageTime: 0,
-      createdAt: Date.now()
-    });
+  let chatId = data && data.id;
+  if (!chatId) {
+    const ins = await sb.from("chats")
+      .insert({ type: "private", members: [myId, contactUid], created_by: myId })
+      .select("id").single();
+    chatId = ins.data.id;
   }
   location.href = "chat.html?id=" + chatId;
 };
 
-/* ---------- مودال افزودن مخاطب ---------- */
+/* ---------- افزودن مخاطب ---------- */
 
 window.openAddContact = function () {
   document.getElementById("add-modal").classList.add("show");
@@ -538,45 +496,42 @@ window.searchContact = async function () {
   resultDiv.innerHTML = "<p class='hint'>در حال جستجو...</p>";
 
   try {
-    let uid = null;
+    let found = null;
+    let query2 = sb.from("profiles").select("id,name,username,photo");
 
     if (q.startsWith("@")) {
-      const s = await getDoc(doc(db, "usernames", q.slice(1)));
-      if (s.exists()) uid = s.data().uid;
-
+      query2 = query2.eq("username", q.slice(1));
     } else if (/^(\+98|98|0)?9\d{9}$/.test(q.replace(/\s/g, ""))) {
       let p = q.replace(/\D/g, "");
       if (p.startsWith("98")) p = "0" + p.slice(2);
       if (p.length === 10) p = "0" + p;
-      const s = await getDoc(doc(db, "phones", p));
-      if (s.exists()) uid = s.data().uid;
-
+      query2 = query2.eq("phone", p);
     } else if (q.includes("@")) {
-      const qs = await getDocs(
-        query(collection(db, "users"), where("email", "==", q), limit(1))
-      );
-      if (!qs.empty) uid = qs.docs[0].id;
+      query2 = query2.eq("email", q);
+    } else {
+      resultDiv.innerHTML = "<p class='hint'>فرمت نامعتبر — با @آیدی، ایمیل یا شماره جستجو کن</p>";
+      return;
     }
 
-    if (!uid) {
+    const { data } = await query2.limit(1);
+    if (data && data.length > 0) found = data[0];
+
+    if (!found) {
       resultDiv.innerHTML = "<p class='hint'>پیدا نشد ❌</p>";
       return;
     }
-    if (uid === me.uid) {
+    if (found.id === myId) {
       resultDiv.innerHTML = "<p class='hint'>این خودتی! 😄</p>";
       return;
     }
 
-    const us = await getDoc(doc(db, "users", uid));
-    const data = us.data() || { name: "کاربر" };
-
     resultDiv.innerHTML = `
       <div class="found-user">
         <div class="chat-item">
-          <div class="avatar">${avatarHTML(data)}</div>
+          <div class="avatar">${avatarHTML(found)}</div>
           <div>
-            <div class="chat-name">${escapeHTML(data.name || "کاربر")}</div>
-            <div class="chat-last">${data.username ? "@" + escapeHTML(data.username) : ""}</div>
+            <div class="chat-name">${escapeHTML(found.name || "کاربر")}</div>
+            <div class="chat-last">${found.username ? "@" + escapeHTML(found.username) : ""}</div>
           </div>
         </div>
         <label class="modal-label">اسم مخاطب (دلخواه — می‌توانی عوضش کنی):</label>
@@ -585,28 +540,27 @@ window.searchContact = async function () {
         <button id="add-btn">افزودن به مخاطبین ➕</button>
       </div>`;
 
-    document.getElementById("add-name").value = data.name || "کاربر";
+    document.getElementById("add-name").value = found.name || "کاربر";
 
     document.getElementById("add-btn").onclick = async () => {
       const customName =
-        document.getElementById("add-name").value.trim() ||
-        data.name || "کاربر";
+        document.getElementById("add-name").value.trim() || found.name || "کاربر";
 
-      await setDoc(doc(db, "users", me.uid, "contacts", uid), {
-        uid: uid,
-        name: customName,
-        username: data.username || "",
-        photo: data.photo || ""
-      });
+      const { error } = await sb.from("contacts").upsert({
+        owner: myId, contact: found.id,
+        name: customName, username: found.username || "", photo: found.photo || ""
+      }, { onConflict: "owner,contact" });
+
+      if (error) { showErr("افزودن نشد: " + error.message); return; }
       resultDiv.innerHTML = "<p class='hint ok-text'>اضافه شد ✅</p>";
       setTimeout(closeAddContact, 800);
     };
   } catch (e) {
-    showErr("خطای جستجو: " + (e.code || e.message));
+    showErr("خطای جستجو: " + e.message);
   }
 };
 
-/* ---------- ذخیره پروفایل ---------- */
+/* ---------- پروفایل ---------- */
 
 window.saveProfile = async function () {
   const name = document.getElementById("set-name").value.trim() || "کاربر";
@@ -620,31 +574,32 @@ window.saveProfile = async function () {
 
   if (username !== (myData.username || "")) {
     if (username) {
-      const existing = await getDoc(doc(db, "usernames", username));
-      if (existing.exists()) {
-        alert("این آیدی قبلاً گرفته شده ❌");
-        return;
-      }
-      await setDoc(doc(db, "usernames", username), { uid: me.uid });
-    }
-    if (myData.username) {
-      await deleteDoc(doc(db, "usernames", myData.username));
+      const { data: existing } = await sb.from("profiles")
+        .select("id").eq("username", username).maybeSingle();
+      if (existing) { alert("این آیدی قبلاً گرفته شده ❌"); return; }
     }
   }
 
-  await updateDoc(doc(db, "users", me.uid), { name, bio, username: username || "" });
-  myData = { ...myData, name, bio, username };
+  const { error } = await sb.from("profiles")
+    .update({ name, bio, username: username || "" })
+    .eq("id", myId);
+
+  if (error) {
+    if (error.code === "23505") alert("این آیدی قبلاً گرفته شده ❌");
+    else alert("ذخیره نشد: " + error.message);
+    return;
+  }
+
+  myData.name = name; myData.bio = bio; myData.username = username;
 
   document.getElementById("user-name").textContent = name;
   renderAvatar(document.getElementById("my-avatar"), myData);
   alert("ذخیره شد ✅");
 };
 
-/* ---------- آپلود عکس ---------- */
-
 window.uploadPhoto = function (input) {
   const file = input.files[0];
-  if (!file || !me) return;
+  if (!file || !myId) return;
 
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -657,20 +612,19 @@ window.uploadPhoto = function (input) {
         canvas.height = size;
         const ctx = canvas.getContext("2d");
         const min = Math.min(img.width, img.height);
-        ctx.drawImage(
-          img,
-          (img.width - min) / 2, (img.height - min) / 2, min, min,
-          0, 0, size, size
-        );
+        ctx.drawImage(img, (img.width - min) / 2, (img.height - min) / 2, min, min, 0, 0, size, size);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
 
-        await updateDoc(doc(db, "users", me.uid), { photo: dataUrl });
+        const { error } = await sb.from("profiles")
+          .update({ photo: dataUrl }).eq("id", myId);
+        if (error) throw error;
+
         myData.photo = dataUrl;
         renderAvatar(document.getElementById("set-avatar"), myData);
         renderAvatar(document.getElementById("my-avatar"), myData);
         alert("عکس ذخیره شد ✅");
       } catch (err) {
-        showErr("خطای ذخیره عکس: " + (err.code || err.message));
+        showErr("خطای ذخیره عکس: " + err.message);
       }
     };
     img.src = e.target.result;
@@ -678,7 +632,7 @@ window.uploadPhoto = function (input) {
   reader.readAsDataURL(file);
 };
 
-/* ---------- اعلان‌های مرورگر ---------- */
+/* ---------- اعلان و حالت شب ---------- */
 
 window.askNotifPerm = async function () {
   if (!("Notification" in window)) {
@@ -689,9 +643,9 @@ window.askNotifPerm = async function () {
   alert(p === "granted" ? "اعلان‌ها فعال شد ✅" : "اعلان‌ها رد شد ❌");
 };
 
-/* ---------- حالت شب ---------- */
-
 window.toggleDark = function (on) {
   document.body.classList.toggle("dark", on);
   localStorage.setItem("dark", on ? "1" : "0");
 };
+
+start();
