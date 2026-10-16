@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0088cc">
+<link rel="manifest" href="manifest.json">
 <title>RZ-Chat</title>
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 </head>
 <body>
 
@@ -30,21 +32,33 @@
 
 <div id="messages"></div>
 
-<div class="send-box" id="send-box" style="display:none">
-    <input type="file" id="img-input" accept="image/*" style="display:none" onchange="sendImage(this)">
-    <button class="tool-btn" onclick="document.getElementById('img-input').click()" title="عکس">📷</button>
-    <button class="tool-btn" id="mic-btn" onclick="startRecording()" title="پیام صوتی">🎤</button>
-    <input id="messageInput" type="text" placeholder="پیام..."
-        onkeydown="if(event.key === 'Enter') sendMessage()">
-    <button onclick="sendMessage()">➤</button>
-</div>
+<div id="composer" style="display:none">
 
-<div class="send-box rec-box" id="rec-box" style="display:none">
-    <span class="rec-dot"></span>
-    <span id="rec-time">0:00</span>
-    <span class="rec-label">در حال ضبط... (حداکثر ۶۰ ثانیه)</span>
-    <button class="rec-ok" onclick="stopRecording(true)" title="ارسال">✅</button>
-    <button class="rec-cancel" onclick="stopRecording(false)" title="لغو">✖</button>
+    <div id="reply-bar" class="reply-bar" style="display:none">
+        <div class="rb-line"></div>
+        <div class="rb-mid">
+            <div id="reply-name" class="reply-name"></div>
+            <div id="reply-text" class="reply-text"></div>
+        </div>
+        <button class="rb-x" onclick="cancelReply()">✖</button>
+    </div>
+
+    <div class="send-box" id="send-box" style="display:none">
+        <input type="file" id="img-input" accept="image/*" style="display:none" onchange="sendImage(this)">
+        <button class="tool-btn" onclick="document.getElementById('img-input').click()" title="عکس">📷</button>
+        <button class="tool-btn" id="mic-btn" onclick="startRecording()" title="پیام صوتی">🎤</button>
+        <input id="messageInput" type="text" placeholder="پیام...">
+        <button onclick="sendMessage()">➤</button>
+    </div>
+
+    <div class="send-box rec-box" id="rec-box" style="display:none">
+        <span class="rec-dot"></span>
+        <span id="rec-time">0:00</span>
+        <span class="rec-label">در حال ضبط... (حداکثر ۶۰ ثانیه)</span>
+        <button class="rec-ok" onclick="stopRecording(true)" title="ارسال">✅</button>
+        <button class="rec-cancel" onclick="stopRecording(false)" title="لغو">✖</button>
+    </div>
+
 </div>
 
 <div id="info-modal" class="modal-overlay" onclick="if(event.target===this) closeInfo()">
@@ -86,8 +100,21 @@
     </div>
 </div>
 
+<div id="fw-modal" class="modal-overlay" onclick="if(event.target===this) closeForward()">
+    <div class="modal">
+        <h3>فوروارد به...</h3>
+        <div id="fw-list" class="fw-list"></div>
+        <button class="gray" onclick="closeForward()">انصراف</button>
+    </div>
+</div>
+
 <div id="msg-menu"></div>
 
-<script type="module" src="app.js?v=6"></script>
+<script type="module" src="app.js?v=8"></script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js").catch(() => {});
+}
+</script>
 </body>
 </html>
