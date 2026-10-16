@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ساخت آیکون RZ-Chat</title>
+<style>
+  body {
+    font-family: tahoma, sans-serif;
+    background: linear-gradient(160deg, #e7ebf0, #f6f9fc);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+  }
+  .box {
+    background: #fff;
+    border-radius: 20px;
+    padding: 34px 30px;
+    box-shadow: 0 14px 40px rgba(0, 60, 100, 0.12);
+    max-width: 480px;
+    text-align: center;
+  }
+  h1 { font-size: 20px; color: #1b2a3a; margin: 0 0 10px; }
+  p  { font-size: 13px; color: #52627a; line-height: 2; }
+  .row { display: flex; gap: 16px; justify-content: center; margin: 20px 0; flex-wrap: wrap; }
+  .item { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  canvas {
+    width: 92px;
+    height: 92px;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0, 60, 100, 0.18);
+    background: #f2f5f8;
+  }
+  button {
+    background: linear-gradient(135deg, #0088cc, #22a5e0);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 10px 18px;
+    font-family: tahoma;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(0, 136, 204, 0.3);
+    transition: 0.2s;
+  }
+  button:hover { transform: translateY(-2px); }
+  .ok { color: #1a9c5b; font-size: 13px; font-weight: bold; min-height: 24px; margin: 4px 0 0; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>🎨 ساخت آیکون‌های RZ-Chat</h1>
+  <p>روی هر سه دکمه بزن تا فایل‌ها دانلود بشن.<br>
+     بعد این ۳ فایل PNG رو کنار بقیه فایل‌ها (ریشه پروژه) آپلود کن.</p>
+
+  <div class="row">
+    <div class="item">
+      <canvas id="c192" width="192" height="192"></canvas>
+      <button onclick="dl('c192','logo-192.png')">⬇️ logo-192.png</button>
+    </div>
+    <div class="item">
+      <canvas id="c512" width="512" height="512"></canvas>
+      <button onclick="dl('c512','logo-512.png')">⬇️ logo-512.png</button>
+    </div>
+    <div class="item">
+      <canvas id="cmask" width="512" height="512"></canvas>
+      <button onclick="dl('cmask','logo-512-maskable.png')">⬇️ maskable</button>
+    </div>
+  </div>
+
+  <p class="ok" id="st"></p>
+</div>
+
+<script>
+/* مسیر حباب چت — دقیقاً همون path لوگوی خود سایت */
+const BUBBLE = "M256 90c-92 0-166 64-166 142 0 45 25 85 63 111l-15 64c-2 9 7 17 15 12l76-42c9 1 18 2 27 2 92 0 166-64 166-142S348 90 256 90z";
+
+function draw(id, maskable) {
+  const c = document.getElementById(id);
+  const size = c.width;
+  const s = size / 512;
+  const x = c.getContext("2d");
+  x.clearRect(0, 0, size, size);
+  x.save();
+
+  /* پس‌زمینه — برای maskable تمام‌صفحه (بدون گوشه گرد) */
+  x.beginPath();
+  const r = maskable ? 0 : 112 * s;
+  if (x.roundRect) x.roundRect(0, 0, size, size, r);
+  else x.rect(0, 0, size, size);
+  x.clip();
+
+  const g = x.createLinearGradient(0, 0, size, size);
+  g.addColorStop(0, "#22a5e0");
+  g.addColorStop(1, "#006daa");
+  x.fillStyle = g;
+  x.fillRect(0, 0, size, size);
+
+  /* بقیه اجزا در مختصات ۵۱۲ رسم و مقیاس می‌شوند */
+  x.scale(s, s);
+  x.fillStyle = "#ffffff";
+  x.fill(new Path2D(BUBBLE));
+  x.fillStyle = "#0088cc";
+  x.font = "bold 118px Arial, Helvetica, sans-serif";
+  x.textAlign = "center";
+  x.fillText("RZ", 256, 266);
+  x.fillStyle = "#ffd54a";
+  x.beginPath();
+  x.arc(368, 196, 14, 0, Math.PI * 2);
+  x.fill();
+
+  x.restore();
+}
+
+draw("c192", false);
+draw("c512", false);
+draw("cmask", true);
+
+function dl(id, name) {
+  const c = document.getElementById(id);
+  c.toBlob(function (b) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(b);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+    document.getElementById("st").textContent = "✅ " + name + " دانلود شد — بذار کنار بقیه فایل‌ها";
+  });
+}
+</script>
+</body>
+</html>
