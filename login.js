@@ -1,30 +1,11 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  sendSignInLinkToEmail,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
-  signOut
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import {
-  getFirestore, doc, setDoc, getDoc
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { firebaseConfig } from "./firebase.js";
+import { sb } from './supabase.js';
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+// ✅ آدرس سایت تو
+const SITE_URL = "https://rz-chat.rz-ai.workers.dev/index.html";
 
-// ✏️✏️✏️ آدرس جدید Cloudflare Pages را اینجا بذار ✏️✏️✏️
-const SITE_URL = "https://rz-chat.rz-ai.workers.dev";
-
-function actionCodeSettings(phone) {
-  return {
-    url: SITE_URL + "?phone=" + encodeURIComponent(phone),
-    handleCodeInApp: true
-  };
+function maskEmail(e) {
+  const p = e.split("@");
+  return p[0].charAt(0) + "***@" + p[1];
 }
 
 function normalizePhone(input) {
@@ -35,53 +16,50 @@ function normalizePhone(input) {
   return p;
 }
 
-function maskEmail(email) {
-  const parts = email.split("@");
-  return parts[0].charAt(0) + "***@" + parts[1];
-}
+/* ---------- لاگین‌شده؟ مستقیم برو صفحه اصلی ---------- */
 
-async function createUserProfile(user, phone = "") {
-  const userRef = doc(db, "users", user.uid);
-  const snap = await getDoc(userRef);
-  if (!snap.exists()) {
-    await setDoc(userRef, {
-      uid: user.uid,
-      email: user.email || "",
-      phone: phone,
-      name: "کاربر جدید",
-      username: "",
-      bio: "",
-      createdAt: Date.now()
-    });
-  }
-}
+window.addEventListener("load", async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
 
-/* ---------- تب ایمیل و رمز ---------- */
+  const { data: prof } = await sb.from("profiles")
+    .select("profile_done").eq("id", session.user.id).single();
+
+  location.href = (prof && prof.profile_done) ? "chats.html" : "onboard.html";
+});
+
+/* ---------- ایمیل و رمز ---------- */
 
 window.registerUser = async function () {
-  const email = document.getElementById("email").value;
+  const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
-  try {
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
-    await createUserProfile(cred.user);
-    location.href = "chats.html";
-  } catch (error) {
-    alert(error.message);
+  if (!email || !password) { alert("ایمیل و رمز را وارد کن"); return; }
+
+  const { data, error } = await sb.auth.signUp({ email, password });
+  if (error) { alert(error.message); return; }
+
+  if (data.session) {
+    location.href = "onboard.html";
+  } else {
+    alert("ثبت‌نام انجام شد! به ایمیلت برو و تأیید کن، بعد وارد شو.");
   }
 };
 
 window.loginUser = async function () {
-  const email = document.getElementById("email").value;
+  const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
-  try {
-    await signInWithEmailAndPassword(auth, email, password);
-    location.href = "chats.html";
-  } catch (error) {
-    alert(error.message);
-  }
+  if (!email || !password) { alert("ایمیل و رمز را وارد کن"); return; }
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  if (error) { alert(error.message); return; }
+
+  const { data: prof } = await sb.from("profiles")
+    .select("profile_done").eq("id", data.user.id).single();
+
+  location.href = (prof && prof.profile_done) ? "chats.html" : "onboard.html";
 };
 
-/* ---------- تب شماره تلفن ---------- */
+/* ---------- ورود با شماره (لینک ایمیلی) ---------- */
 
 window.phoneLogin = async function () {
   const status = document.getElementById("phone-status");
@@ -95,79 +73,69 @@ window.phoneLogin = async function () {
 
   status.textContent = "در حال بررسی شماره...";
 
-  try {
-    const snap = await getDoc(doc(db, "phones", phone));
+  const { data: existingEmail } = await sb.rpc("get_phone_email", { p_phone: phone });
 
-    if (snap.exists()) {
-      const email = snap.data().email;
-
-      if (emailInput && emailInput !== email) {
-        status.textContent = "❌ این شماره با ایمیل دیگری ثبت شده: " + maskEmail(email);
-        return;
-      }
-
-      await sendSignInLinkToEmail(auth, email, actionCodeSettings(phone));
-      localStorage.setItem("emailForSignIn", email);
-      localStorage.setItem("phoneForSignIn", phone);
-      status.textContent = "✉️ لینک ورود به " + maskEmail(email) + " فرستاده شد — ایمیلت را چک کن!";
-
-    } else {
-      if (!emailInput) {
-        status.textContent = "این شماره ثبت نشده؛ برای ثبت‌نام ایمیلت را هم وارد کن.";
-        return;
-      }
-
-      await sendSignInLinkToEmail(auth, emailInput, actionCodeSettings(phone));
-      localStorage.setItem("emailForSignIn", emailInput);
-      localStorage.setItem("phoneForSignIn", phone);
-      status.textContent = "✉️ لینک ثبت‌نام به " + maskEmail(emailInput) + " فرستاده شد — روی لینک کلیک کن!";
+  let email;
+  if (existingEmail) {
+    if (emailInput && emailInput !== existingEmail) {
+      status.textContent = "❌ این شماره با ایمیل دیگری ثبت شده: " + maskEmail(existingEmail);
+      return;
     }
-  } catch (e) {
-    console.error(e);
-    status.textContent = "خطا! دوباره امتحان کن.";
+    email = existingEmail;
+  } else {
+    if (!emailInput) {
+      status.textContent = "این شماره ثبت نشده؛ برای ثبت‌نام ایمیلت را هم وارد کن.";
+      return;
+    }
+    email = emailInput;
   }
+
+  const { error } = await sb.auth.signInWithOtp({
+    email: email,
+    options: { emailRedirectTo: SITE_URL + "?phone=" + encodeURIComponent(phone) }
+  });
+
+  if (error) {
+    console.error(error);
+    status.textContent = "خطا! " + error.message;
+    return;
+  }
+
+  localStorage.setItem("phoneForSignIn", phone);
+  status.textContent = "✉️ لینک ورود به " + maskEmail(email) + " فرستاده شد — ایمیلت را چک کن!";
 };
 
-/* ---------- تکمیل خودکار ورود با لینک ---------- */
+/* ---------- تکمیل خودکار ورود بعد از کلیک لینک ایمیل ---------- */
 
-window.addEventListener("load", async () => {
-  if (!isSignInWithEmailLink(auth, location.href)) return;
+async function handleEmailLink() {
+  if (!window.location.hash.includes("access_token")) return;
 
-  let email = localStorage.getItem("emailForSignIn") || prompt("برای تکمیل ورود، ایمیلت را وارد کن:");
-  if (!email) return;
-  email = email.trim().toLowerCase();
+  let tries = 0;
+  let session = null;
+  while (tries < 20 && !session) {
+    const r = await sb.auth.getSession();
+    session = r.data.session;
+    if (!session) await new Promise(r2 => setTimeout(r2, 300));
+    tries++;
+  }
+  if (!session) return;
 
   const urlPhone = new URLSearchParams(location.search).get("phone");
   const phone = normalizePhone(urlPhone || localStorage.getItem("phoneForSignIn") || "");
 
-  try {
-    const cred = await signInWithEmailLink(auth, email, location.href);
-
-    localStorage.removeItem("emailForSignIn");
+  if (phone) {
+    await sb.rpc("claim_phone", { p_phone: phone });
     localStorage.removeItem("phoneForSignIn");
-
-    if (phone) {
-      const phoneRef = doc(db, "phones", phone);
-      const snap = await getDoc(phoneRef);
-
-      if (!snap.exists()) {
-        await setDoc(phoneRef, { uid: cred.user.uid, email: email });
-        await createUserProfile(cred.user, phone);
-      } else if (snap.data().uid === cred.user.uid) {
-        await createUserProfile(cred.user, phone);
-      } else {
-        await signOut(auth);
-        alert("این شماره به حساب دیگری متصل است ❌");
-        return;
-      }
-    }
-
-    location.href = "chats.html";
-  } catch (e) {
-    console.error(e);
-    alert("لینک نامعتبر است یا منقضی شده. دوباره امتحان کن.");
   }
-});
+
+  const { data: prof } = await sb.from("profiles")
+    .select("profile_done").eq("id", session.user.id).single();
+
+  location.href = (prof && prof.profile_done) ? "chats.html" : "onboard.html";
+}
+
+window.addEventListener("hashchange", handleEmailLink);
+window.addEventListener("load", handleEmailLink);
 
 /* ---------- تب‌ها ---------- */
 
