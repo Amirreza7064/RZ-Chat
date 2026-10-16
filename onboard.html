@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0088cc">
+<link rel="manifest" href="manifest.json">
+<title>RZ-Chat — پروفایل</title>
+<link rel="stylesheet" href="style.css?v=7">
+</head>
+<body>
+
+<div class="page-box">
+    <h2>۱ از ۳ — عکس پروفایل 📷</h2>
+    <p class="hint">مثل تلگرام، اول عکس بذار:</p>
+
+    <div class="avatar-edit">
+        <div class="avatar big" id="ob-avatar" style="cursor:pointer"
+            onclick="document.getElementById('ob-input').click()">؟</div>
+        <button class="small-btn" onclick="document.getElementById('ob-input').click()">انتخاب عکس</button>
+        <input type="file" id="ob-input" accept="image/*" style="display:none" onchange="obPhoto(this)">
+    </div>
+
+    <button onclick="obStep2()">بعدی ←</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script type="module" src="onboard.js?v=9"></script>
+</body>
+</html>
