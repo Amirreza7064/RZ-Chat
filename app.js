@@ -21,6 +21,12 @@ let isAdmin = false;
 let messagesCache = {};
 const userCache = {};
 
+let replyState = null;
+let fwMid = null;
+
+let typingTimeout = null;
+let typingLast = 0;
+
 if (localStorage.getItem("dark") === "1") document.body.classList.add("dark");
 
 const errBanner = document.createElement("div");
@@ -78,12 +84,36 @@ function renderChatAvatar(el, c) {
 
 function setChatIcon(c) { renderChatAvatar(document.getElementById("chat-icon"), c); }
 
-function updateSubCount() {
+function updateSub() {
   const el = document.getElementById("chat-sub");
-  if (el && chatData && !isPrivate && !isSaved) {
-    el.textContent = (chatData.type === "channel" ? "کانال" : "گروه")
-      + " • " + (chatData.members || []).length + " عضو";
+  if (!el || !chatData) return;
+
+  if (isSaved) {
+    el.textContent = "فقط برای خودت";
+    return;
   }
+
+  // ✍️ «در حال نوشتن...»
+  const typing = chatData.typing || {};
+  const now = Date.now();
+  const writing = Object.entries(typing).find(([uid, ts]) =>
+    uid !== currentUser.uid && (now - ts) < 5000
+  );
+  if (writing) {
+    el.textContent = "✍️ در حال نوشتن...";
+    return;
+  }
+
+  if (isPrivate) {
+    const members = chatData.members || [];
+    const otherUid = members.find(u => u !== currentUser.uid);
+    const info = otherUid ? userCache[otherUid] : null;
+    el.textContent = (info && info.username) ? "@" + info.username : "چت خصوصی";
+    return;
+  }
+
+  el.textContent = (chatData.type === "channel" ? "کانال" : "گروه")
+    + " • " + (chatData.members || []).length + " عضو";
 }
 
 function markAsRead() {
@@ -96,6 +126,18 @@ function markAsRead() {
 function fmtDur(s) {
   const m = Math.floor(s / 60);
   return m + ":" + String(s % 60).padStart(2, "0");
+}
+
+function showComposer() {
+  document.getElementById("composer").style.display = "block";
+  document.getElementById("send-box").style.display = "flex";
+}
+
+function previewOf(d) {
+  if (d.deleted) return "🚫 حذف شده";
+  if (d.image) return "🖼 عکس";
+  if (d.audio) return "🎤 پیام صوتی";
+  return (d.text || "").slice(0, 80);
 }
 
 /* ================= شروع ================= */
@@ -121,8 +163,8 @@ onAuthStateChanged(auth, async (user) => {
       isSaved = true;
       document.getElementById("chat-icon").textContent = "🔖";
       document.getElementById("chat-title").textContent = "پیام‌های ذخیره‌شده";
-      document.getElementById("chat-sub").textContent = "فقط برای خودت";
-      document.getElementById("send-box").style.display = "flex";
+      updateSub();
+      showComposer();
 
     } else if (chatData.type === "private") {
       isPrivate = true;
@@ -136,9 +178,8 @@ onAuthStateChanged(auth, async (user) => {
       const other = otherUid ? await getUserInfo(otherUid) : { name: "کاربر" };
       renderAvatar(document.getElementById("chat-icon"), other);
       document.getElementById("chat-title").textContent = other.name || "کاربر";
-      document.getElementById("chat-sub").textContent =
-        other.username ? "@" + other.username : "چت خصوصی";
-      document.getElementById("send-box").style.display = "flex";
+      updateSub();
+      showComposer();
 
     } else {
       const members = chatData.members || [];
@@ -147,7 +188,7 @@ onAuthStateChanged(auth, async (user) => {
 
       document.getElementById("chat-title").textContent = chatData.name;
       setChatIcon(chatData);
-      updateSubCount();
+      updateSub();
 
       if (!isMember) {
         document.getElementById("join-text").textContent =
@@ -157,13 +198,25 @@ onAuthStateChanged(auth, async (user) => {
         document.getElementById("join-bar").style.display = "flex";
       } else {
         if (chatData.type !== "channel" || isAdmin) {
-          document.getElementById("send-box").style.display = "flex";
+          showComposer();
         }
         document.getElementById("invite-btn").style.display = "inline-block";
       }
       document.getElementById("chat-header").style.cursor = "pointer";
       document.getElementById("chat-header").onclick = openInfo;
     }
+
+    // شنونده زنده چت → تایپ و تغییرات گروه
+    if (!isSaved) {
+      onSnapshot(doc(db, "chats", chatId), (snap) => {
+        if (!snap.exists()) return;
+        chatData = snap.data();
+        updateSub();
+      });
+    }
+
+    // شنونده ورودی تایپ
+    document.getElementById("messageInput").addEventListener("input", setTyping);
 
     markAsRead();
     listenMessages();
@@ -172,7 +225,34 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-/* ================= پروفایل چت (اطلاعات) ================= */
+/* ================= ✍️ در حال نوشتن ================= */
+
+function setTyping() {
+  if (!currentUser || isSaved) return;
+  if (chatData && chatData.type === "channel" && !isAdmin) return;
+
+  const now = Date.now();
+  if (now - typingLast < 2000) return; // هر ۲ ثانیه یک بار
+  typingLast = now;
+
+  updateDoc(doc(db, "chats", chatId), {
+    ["typing." + currentUser.uid]: now
+  }).catch(() => {});
+
+  clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(clearTyping, 6000);
+}
+
+async function clearTyping() {
+  if (!currentUser || !chatId || isSaved) return;
+  try {
+    await updateDoc(doc(db, "chats", chatId), {
+      ["typing." + currentUser.uid]: deleteField()
+    });
+  } catch (e) { /* ignore */ }
+}
+
+/* ================= پروفایل چت ================= */
 
 window.openInfo = async function () {
   if (!chatData || isPrivate || isSaved) return;
@@ -253,7 +333,7 @@ window.addMember = async function () {
   chatData.members = [...(chatData.members || []), uid];
   document.getElementById("add-member-q").value = "";
   await renderMembers();
-  updateSubCount();
+  updateSub();
 };
 
 window.removeMember = async function (uid) {
@@ -261,7 +341,7 @@ window.removeMember = async function (uid) {
   await updateDoc(doc(db, "chats", chatId), { members: arrayRemove(uid) });
   chatData.members = (chatData.members || []).filter(u => u !== uid);
   await renderMembers();
-  updateSubCount();
+  updateSub();
 };
 
 window.saveChatInfo = async function () {
@@ -326,6 +406,145 @@ window.joinChat = async function () {
   }
 };
 
+/* ================= ↩️ پاسخ ================= */
+
+window.replyTo = function (mid) {
+  const d = messagesCache[mid];
+  if (!d) return;
+  replyState = {
+    mid: mid,
+    name: d.senderName || "کاربر",
+    preview: previewOf(d)
+  };
+  showReplyBar();
+};
+
+function showReplyBar() {
+  if (!replyState) return;
+  document.getElementById("reply-name").textContent = "پاسخ به " + replyState.name;
+  document.getElementById("reply-text").textContent = replyState.preview;
+  document.getElementById("reply-bar").style.display = "flex";
+  document.getElementById("messageInput").focus();
+}
+
+window.cancelReply = function () {
+  replyState = null;
+  document.getElementById("reply-bar").style.display = "none";
+};
+
+window.jumpTo = function (mid) {
+  const el = document.querySelector(`#messages [data-mid="${mid}"]`);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  el.classList.add("msg-flash");
+  setTimeout(() => el.classList.remove("msg-flash"), 1300);
+};
+
+/* ================= 😊 ری‌اکشن ================= */
+
+window.toggleReaction = async function (mid, emoji) {
+  const d = messagesCache[mid];
+  if (!d || d.deleted) return;
+  const cur = (d.reactions || {})[currentUser.uid];
+  const ref = doc(db, "chats", chatId, "messages", mid);
+  try {
+    if (cur === emoji) {
+      await updateDoc(ref, { ["reactions." + currentUser.uid]: deleteField() });
+    } else {
+      await updateDoc(ref, { ["reactions." + currentUser.uid]: emoji });
+    }
+  } catch (e) {
+    showErr("واکنش ثبت نشد: " + (e.code || e.message));
+  }
+};
+
+window.reactFromMenu = function (mid, emoji) {
+  toggleReaction(mid, emoji);
+};
+
+/* ================= ↪️ فوروارد ================= */
+
+window.openForward = async function (mid) {
+  fwMid = mid;
+  document.getElementById("fw-modal").classList.add("show");
+  await renderFwList();
+};
+
+window.closeForward = function () {
+  document.getElementById("fw-modal").classList.remove("show");
+  fwMid = null;
+};
+
+async function renderFwList() {
+  const list = document.getElementById("fw-list");
+  list.innerHTML = "<p class='hint'>⏳ ...</p>";
+
+  try {
+    const qs = await getDocs(
+      query(collection(db, "chats"), where("members", "array-contains", currentUser.uid))
+    );
+
+    let html = "";
+    for (const dd of qs.docs) {
+      const c = dd.data();
+      let icon, title;
+
+      if (c.type === "saved") {
+        icon = "🔖";
+        title = "پیام‌های ذخیره‌شده";
+      } else if (c.type === "private") {
+        const otherUid = (c.members || []).find(u => u !== currentUser.uid);
+        const info = otherUid ? await getUserInfo(otherUid) : { name: "کاربر" };
+        icon = avatarHTML(info);
+        title = info.name || "کاربر";
+      } else {
+        if (c.type === "channel" && !(c.admins || []).includes(currentUser.uid)) continue;
+        icon = c.type === "channel" ? "📢" : "👥";
+        title = c.name || "چت";
+      }
+
+      html += `
+        <div class="fw-item" onclick="doForward('${dd.id}')">
+          <div class="avatar">${icon}</div>
+          <div>${escapeHTML(title)}</div>
+        </div>`;
+    }
+
+    if (!html) html = "<p class='hint'>چتی برای فوروارد نیست</p>";
+    list.innerHTML = html;
+  } catch (e) {
+    list.innerHTML = "<p class='hint'>خطا</p>";
+  }
+}
+
+window.doForward = async function (targetId) {
+  const d = messagesCache[fwMid];
+  if (!d || d.deleted) return;
+
+  const nd = {
+    senderName: d.senderName || myName,
+    uid: currentUser.uid,
+    time: Date.now(),
+    forwarded: true
+  };
+  if (d.text) nd.text = d.text;
+  if (d.image) nd.image = d.image;
+  if (d.audio) { nd.audio = d.audio; nd.audioDuration = d.audioDuration || 0; }
+
+  try {
+    await addDoc(collection(db, "chats", targetId, "messages"), nd);
+    await updateDoc(doc(db, "chats", targetId), {
+      lastMessage: "↪️ " + previewOf(d),
+      lastMessageTime: Date.now(),
+      lastMessageSender: currentUser.uid
+    });
+    closeForward();
+    alert("فوروارد شد ✅");
+  } catch (e) {
+    showErr("فوروارد نشد: " + (e.code || e.message));
+  }
+};
+
 /* ================= ارسال پیام متنی ================= */
 
 async function sendMessage() {
@@ -336,9 +555,18 @@ async function sendMessage() {
   const text = input.value.trim();
   if (!text) return;
 
-  await addDoc(collection(db, "chats", chatId, "messages"), {
+  const msg = {
     text: text, senderName: myName, uid: currentUser.uid, time: Date.now()
-  });
+  };
+  if (replyState) {
+    msg.replyTo = {
+      mid: replyState.mid,
+      name: replyState.name,
+      text: replyState.preview
+    };
+  }
+
+  await addDoc(collection(db, "chats", chatId, "messages"), msg);
 
   updateDoc(doc(db, "chats", chatId), {
     lastMessage: text, lastMessageTime: Date.now(), lastMessageSender: currentUser.uid
@@ -346,6 +574,8 @@ async function sendMessage() {
 
   input.value = "";
   input.focus();
+  cancelReply();
+  clearTyping();
 }
 
 window.sendMessage = sendMessage;
@@ -379,12 +609,20 @@ window.sendImage = function (input) {
           return;
         }
 
-        await addDoc(collection(db, "chats", chatId, "messages"), {
+        const msg = {
           text: "", image: dataUrl, senderName: myName, uid: currentUser.uid, time: Date.now()
-        });
+        };
+        if (replyState) {
+          msg.replyTo = {
+            mid: replyState.mid, name: replyState.name, text: replyState.preview
+          };
+        }
+
+        await addDoc(collection(db, "chats", chatId, "messages"), msg);
         updateDoc(doc(db, "chats", chatId), {
           lastMessage: "🖼 عکس", lastMessageTime: Date.now(), lastMessageSender: currentUser.uid
         });
+        cancelReply();
       } catch (err) {
         showErr("خطای ارسال عکس: " + (err.code || err.message));
       }
@@ -439,14 +677,21 @@ window.startRecording = async function () {
 
       const reader = new FileReader();
       reader.onload = async (ev) => {
-        await addDoc(collection(db, "chats", chatId, "messages"), {
+        const msg = {
           text: "", audio: ev.target.result, audioDuration: recSeconds,
           senderName: myName, uid: currentUser.uid, time: Date.now()
-        });
+        };
+        if (replyState) {
+          msg.replyTo = {
+            mid: replyState.mid, name: replyState.name, text: replyState.preview
+          };
+        }
+        await addDoc(collection(db, "chats", chatId, "messages"), msg);
         updateDoc(doc(db, "chats", chatId), {
           lastMessage: "🎤 پیام صوتی", lastMessageTime: Date.now(),
           lastMessageSender: currentUser.uid
         });
+        cancelReply();
       };
       reader.readAsDataURL(blob);
     };
@@ -475,6 +720,60 @@ window.stopRecording = function (send) {
   mediaRecorder.stop();
 };
 
+/* ================= 🎵 پخش‌کننده موجی ================= */
+
+function hashSeed(s) {
+  let h = 0;
+  for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h;
+}
+
+function barsHTML(seed) {
+  let x = seed % 233280;
+  let h = "";
+  for (let i = 0; i < 28; i++) {
+    x = (x * 9301 + 49297) % 233280;
+    h += `<span style="height:${7 + (x % 18)}px"></span>`;
+  }
+  return h;
+}
+
+function paintWave(mid, p) {
+  const w = document.getElementById("wave-" + mid);
+  if (!w) return;
+  const spans = w.children;
+  const n = Math.floor(p * spans.length);
+  for (let i = 0; i < spans.length; i++) {
+    spans[i].classList.toggle("on", i < n);
+  }
+}
+
+window.vplay = function (btn, mid) {
+  const aud = document.getElementById("aud-" + mid);
+  if (!aud) return;
+
+  document.querySelectorAll("#messages audio").forEach(a => { if (a !== aud) a.pause(); });
+  document.querySelectorAll("#messages .vplay").forEach(b => { if (b !== btn) b.textContent = "▶"; });
+
+  if (aud.paused) {
+    aud.play();
+    btn.textContent = "⏸";
+    aud.ontimeupdate = () => {
+      const dur = (isFinite(aud.duration) && aud.duration > 0)
+        ? aud.duration
+        : ((messagesCache[mid] || {}).audioDuration || 1);
+      paintWave(mid, Math.min(aud.currentTime / dur, 1));
+    };
+    aud.onended = () => {
+      btn.textContent = "▶";
+      paintWave(mid, 0);
+    };
+  } else {
+    aud.pause();
+    btn.textContent = "▶";
+  }
+};
+
 /* ================= نمایش پیام‌ها ================= */
 
 function listenMessages() {
@@ -499,12 +798,21 @@ function listenMessages() {
       if (d.deleted) {
         inner = `<div class="text deleted-msg">🚫 این پیام حذف شده است</div>`;
       } else {
+        // پاسخ
+        if (d.replyTo) {
+          inner += `
+            <div class="reply-box" onclick="jumpTo('${d.replyTo.mid}')">
+              <div class="reply-name">${escapeHTML(d.replyTo.name)}</div>
+              <div class="reply-text">${escapeHTML(d.replyTo.text || "")}</div>
+            </div>`;
+        }
         if (d.image) inner += `<img class="msg-img" src="${d.image}" alt="عکس">`;
         if (d.audio) inner += `
           <div class="voice-row">
-            <span class="voice-ic">🎤</span>
-            <audio controls src="${d.audio}"></audio>
+            <button class="vplay" onclick="vplay(this,'${mid}')">▶</button>
+            <div class="wave" id="wave-${mid}">${barsHTML(hashSeed(mid))}</div>
             <span class="voice-dur">${fmtDur(d.audioDuration || 0)}</span>
+            <audio id="aud-${mid}" src="${d.audio}" preload="none" style="display:none"></audio>
           </div>`;
         if (d.text) inner += `<div class="text">${escapeHTML(d.text)}</div>`;
       }
@@ -512,14 +820,31 @@ function listenMessages() {
       const senderHtml = (!mine && !isPrivate && !isSaved)
         ? `<div class="sender">${escapeHTML(d.senderName || "ناشناس")}</div>` : "";
 
+      const fwdTag = d.forwarded ? '<span class="fwd-tag">↪️ فوروارد</span>' : "";
+
       const editedTag = (d.edited && !d.deleted)
         ? '<span class="edited"> (ویرایش‌شده)</span>' : "";
+
+      // ری‌اکشن‌ها
+      let rHtml = "";
+      if (!d.deleted && d.reactions) {
+        const groups = {};
+        Object.entries(d.reactions).forEach(([uid, e]) => {
+          (groups[e] = groups[e] || []).push(uid);
+        });
+        for (const [e, uids] of Object.entries(groups)) {
+          const mineR = uids.includes(currentUser.uid);
+          rHtml += `<span class="rchip ${mineR ? "mine" : ""}" onclick="toggleReaction('${mid}','${e}')">${e}${uids.length > 1 ? " " + uids.length : ""}</span>`;
+        }
+      }
 
       box.innerHTML += `
         <div class="message ${mine ? "mine" : ""}" data-mid="${mid}">
           ${senderHtml}
+          ${fwdTag}
           ${inner}
           <div class="time">${time}${editedTag}</div>
+          ${rHtml ? `<div class="rbar">${rHtml}</div>` : ""}
         </div>`;
     });
 
@@ -537,7 +862,7 @@ document.getElementById("messages").addEventListener("click", (e) => {
   }
 });
 
-/* ================= ویرایش/حذف پیام ================= */
+/* ================= منوی راست‌کلیک پیام ================= */
 
 const msgMenu = document.getElementById("msg-menu");
 
@@ -553,13 +878,19 @@ document.addEventListener("contextmenu", (e) => {
   const mine = d.uid === currentUser.uid;
   let html = "";
 
-  if (mine && d.text && !d.image && !d.audio) {
+  // ردیف ری‌اکشن‌ها
+  html += `<div class="react-row">${["👍", "❤️", "😂", "😮", "😢"]
+    .map(e => `<button onclick="reactFromMenu('${mid}','${e}')">${e}</button>`).join("")}</div>`;
+
+  html += `<button onclick="replyTo('${mid}')">↩️ پاسخ</button>`;
+  html += `<button onclick="openForward('${mid}')">↪️ فوروارد</button>`;
+
+  if (mine && d.text && !d.image && !d.audio && !d.forwarded) {
     html += `<button onclick="editMsg('${mid}')">✏️ ویرایش</button>`;
   }
   if (mine || (chatData && isAdmin && !isPrivate && !isSaved)) {
     html += `<button class="danger" onclick="deleteMsg('${mid}')">🗑 حذف</button>`;
   }
-  if (!html) return;
 
   msgMenu.innerHTML = html;
   msgMenu.style.display = "block";
@@ -583,6 +914,7 @@ window.deleteMsg = async function (mid) {
   if (!confirm("این پیام حذف شود؟")) return;
   await updateDoc(doc(db, "chats", chatId, "messages", mid), {
     deleted: true, text: "",
-    image: deleteField(), audio: deleteField(), audioDuration: deleteField()
+    image: deleteField(), audio: deleteField(), audioDuration: deleteField(),
+    replyTo: deleteField()
   });
 };
