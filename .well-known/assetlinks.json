@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "com.rzai.rzchat",
+        "sha256_cert_fingerprints": ["60:D6:76:6B:FC:60:2A:7B:F2:40:11:5A:52:FC:C9:24:FF:6F:34:D6:AD:A4:16:18:0D:30:1C:4A:FA:24:78:11"]
+      }
+    }]
