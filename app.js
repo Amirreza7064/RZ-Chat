@@ -1,20 +1,10 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getFirestore, collection, addDoc, query, orderBy, onSnapshot,
-  doc, getDoc, setDoc, updateDoc, deleteField, arrayUnion, arrayRemove,
-  where, limit, getDocs
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { firebaseConfig } from "./firebase.js";
+import { sb, initAuth, escapeHTML, renderAvatar, avatarHTML, getUserInfo, getMyId, getMe } from './auth.js';
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-let currentUser = null;
+let myId = null;
 let myName = "کاربر";
 let chatId = new URLSearchParams(location.search).get("id");
 let chatData = null;
+let otherInfo = null;
 let isPrivate = false;
 let isSaved = false;
 let isAdmin = false;
@@ -23,7 +13,6 @@ const userCache = {};
 
 let replyState = null;
 let fwMid = null;
-
 let typingTimeout = null;
 let typingLast = 0;
 
@@ -41,96 +30,12 @@ function showErr(m) {
 }
 window.addEventListener("unhandledrejection", (e) => {
   const r = e.reason;
-  showErr((r && (r.code || r.message)) || String(r));
+  showErr((r && r.message) || String(r));
 });
-
-function escapeHTML(s) {
-  const d = document.createElement("div");
-  d.textContent = s || "";
-  return d.innerHTML;
-}
-
-function renderAvatar(el, data) {
-  if (!el) return;
-  if (data && data.photo) {
-    el.innerHTML = `<img src="${data.photo}" alt="">`;
-  } else {
-    el.textContent = ((data && data.name) || "؟").charAt(0);
-  }
-}
-
-function avatarHTML(data) {
-  const t = document.createElement("div");
-  renderAvatar(t, data);
-  return t.innerHTML;
-}
-
-async function getUserInfo(uid) {
-  if (userCache[uid]) return userCache[uid];
-  const s = await getDoc(doc(db, "users", uid));
-  const d = s.exists() ? s.data() : { name: "کاربر" };
-  userCache[uid] = d;
-  return d;
-}
-
-function renderChatAvatar(el, c) {
-  if (!el) return;
-  if (c && c.photo) {
-    el.innerHTML = `<img src="${c.photo}" alt="">`;
-  } else {
-    el.textContent = (c && c.type === "channel") ? "📢" : "👥";
-  }
-}
-
-function setChatIcon(c) { renderChatAvatar(document.getElementById("chat-icon"), c); }
-
-function updateSub() {
-  const el = document.getElementById("chat-sub");
-  if (!el || !chatData) return;
-
-  if (isSaved) {
-    el.textContent = "فقط برای خودت";
-    return;
-  }
-
-  // ✍️ «در حال نوشتن...»
-  const typing = chatData.typing || {};
-  const now = Date.now();
-  const writing = Object.entries(typing).find(([uid, ts]) =>
-    uid !== currentUser.uid && (now - ts) < 5000
-  );
-  if (writing) {
-    el.textContent = "✍️ در حال نوشتن...";
-    return;
-  }
-
-  if (isPrivate) {
-    const members = chatData.members || [];
-    const otherUid = members.find(u => u !== currentUser.uid);
-    const info = otherUid ? userCache[otherUid] : null;
-    el.textContent = (info && info.username) ? "@" + info.username : "چت خصوصی";
-    return;
-  }
-
-  el.textContent = (chatData.type === "channel" ? "کانال" : "گروه")
-    + " • " + (chatData.members || []).length + " عضو";
-}
-
-function markAsRead() {
-  if (!currentUser || !chatId) return;
-  setDoc(doc(db, "users", currentUser.uid, "chatMeta", chatId), {
-    lastReadTime: Date.now(), markUnread: false
-  }, { merge: true }).catch(() => {});
-}
 
 function fmtDur(s) {
   const m = Math.floor(s / 60);
   return m + ":" + String(s % 60).padStart(2, "0");
-}
-
-function showComposer() {
-  document.getElementById("composer").style.display = "block";
-  document.getElementById("send-box").style.display = "flex";
 }
 
 function previewOf(d) {
@@ -140,24 +45,63 @@ function previewOf(d) {
   return (d.text || "").slice(0, 80);
 }
 
+function showComposer() {
+  document.getElementById("composer").style.display = "block";
+  document.getElementById("send-box").style.display = "flex";
+}
+
+function updateSub() {
+  const el = document.getElementById("chat-sub");
+  if (!el || !chatData) return;
+
+  if (isSaved) { el.textContent = "فقط برای خودت"; return; }
+
+  const typing = chatData.typing || {};
+  const now = Date.now();
+  const writing = Object.entries(typing).find(([uid, ts]) =>
+    uid !== myId && (now - ts) < 5000
+  );
+  if (writing) { el.textContent = "✍️ در حال نوشتن..."; return; }
+
+  if (isPrivate) {
+    el.textContent = (otherInfo && otherInfo.username)
+      ? "@" + otherInfo.username : "چت خصوصی";
+    return;
+  }
+
+  el.textContent = (chatData.type === "channel" ? "کانال" : "گروه")
+    + " • " + (chatData.members || []).length + " عضو";
+}
+
+function markAsRead() {
+  if (!myId || !chatId) return;
+  sb.from("chat_meta").upsert({
+    user_id: myId, chat_id: chatId,
+    last_read_time: Date.now(), mark_unread: false
+  }, { onConflict: "user_id,chat_id" }).then(() => {}, () => {});
+}
+
 /* ================= شروع ================= */
 
-onAuthStateChanged(auth, async (user) => {
-  if (!user) { location.href = "index.html"; return; }
-  currentUser = user;
+async function start() {
+  if (!await initAuth()) return;
+  myId = getMyId();
+  const meData = getMe();
+  myName = meData.name || "کاربر";
+
   if (!chatId) { location.href = "chats.html"; return; }
 
   try {
-    const userSnap = await getDoc(doc(db, "users", user.uid));
-    myName = userSnap.exists() ? (userSnap.data().name || "کاربر") : "کاربر";
+    const { data: chat, error } = await sb.from("chats")
+      .select("*").eq("id", chatId).maybeSingle();
+    if (error) throw error;
 
-    const chatSnap = await getDoc(doc(db, "chats", chatId));
-    if (!chatSnap.exists()) {
+    if (!chat) {
       alert("این چت وجود ندارد");
       location.href = "chats.html";
       return;
     }
-    chatData = chatSnap.data();
+    chatData = chat;
 
     if (chatData.type === "saved") {
       isSaved = true;
@@ -169,25 +113,25 @@ onAuthStateChanged(auth, async (user) => {
     } else if (chatData.type === "private") {
       isPrivate = true;
       const members = chatData.members || [];
-      if (!members.includes(currentUser.uid)) {
+      if (!members.includes(myId)) {
         alert("این چت مال تو نیست ❌");
         location.href = "chats.html";
         return;
       }
-      const otherUid = members.find(u => u !== currentUser.uid);
-      const other = otherUid ? await getUserInfo(otherUid) : { name: "کاربر" };
-      renderAvatar(document.getElementById("chat-icon"), other);
-      document.getElementById("chat-title").textContent = other.name || "کاربر";
+      const otherUid = members.find(u => u !== myId);
+      otherInfo = otherUid ? await getUserInfo(otherUid) : { name: "کاربر" };
+      renderAvatar(document.getElementById("chat-icon"), otherInfo);
+      document.getElementById("chat-title").textContent = otherInfo.name || "کاربر";
       updateSub();
       showComposer();
 
     } else {
       const members = chatData.members || [];
-      isAdmin = (chatData.admins || []).includes(currentUser.uid);
-      const isMember = members.includes(currentUser.uid);
+      isAdmin = (chatData.admins || []).includes(myId);
+      const isMember = members.includes(myId);
 
       document.getElementById("chat-title").textContent = chatData.name;
-      setChatIcon(chatData);
+      setChatIcon();
       updateSub();
 
       if (!isMember) {
@@ -197,58 +141,73 @@ onAuthStateChanged(auth, async (user) => {
             : "برای ارسال پیام در این گروه عضو شو:";
         document.getElementById("join-bar").style.display = "flex";
       } else {
-        if (chatData.type !== "channel" || isAdmin) {
-          showComposer();
-        }
+        if (chatData.type !== "channel" || isAdmin) showComposer();
         document.getElementById("invite-btn").style.display = "inline-block";
       }
       document.getElementById("chat-header").style.cursor = "pointer";
       document.getElementById("chat-header").onclick = openInfo;
     }
 
-    // شنونده زنده چت → تایپ و تغییرات گروه
-    if (!isSaved) {
-      onSnapshot(doc(db, "chats", chatId), (snap) => {
-        if (!snap.exists()) return;
-        chatData = snap.data();
-        updateSub();
-      });
-    }
+    sb.channel("chat-" + chatId)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "chats", filter: "id=eq." + chatId },
+        (p) => {
+          if (p.new) { chatData = p.new; updateSub(); }
+        })
+      .subscribe();
 
-    // شنونده ورودی تایپ
-    document.getElementById("messageInput").addEventListener("input", setTyping);
+    sb.channel("msgs-" + chatId)
+      .on("postgres_changes",
+        { event: "*", schema: "public", table: "messages", filter: "chat_id=eq." + chatId },
+        () => loadMessages())
+      .subscribe();
 
-    markAsRead();
-    listenMessages();
+    const input = document.getElementById("messageInput");
+    input.addEventListener("input", setTyping);
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    await loadMessages();
   } catch (e) {
-    showErr("خطای بارگذاری: " + (e.code || e.message));
+    showErr("خطای بارگذاری: " + e.message);
   }
-});
+}
+
+function setChatIcon() {
+  const el = document.getElementById("chat-icon");
+  if (!el) return;
+  if (chatData && chatData.photo) {
+    el.innerHTML = `<img src="${chatData.photo}" alt="">`;
+  } else {
+    el.textContent = (chatData && chatData.type === "channel") ? "📢" : "👥";
+  }
+}
 
 /* ================= ✍️ در حال نوشتن ================= */
 
 function setTyping() {
-  if (!currentUser || isSaved) return;
+  if (!myId || isSaved) return;
   if (chatData && chatData.type === "channel" && !isAdmin) return;
 
   const now = Date.now();
-  if (now - typingLast < 2000) return; // هر ۲ ثانیه یک بار
+  if (now - typingLast < 2000) return;
   typingLast = now;
 
-  updateDoc(doc(db, "chats", chatId), {
-    ["typing." + currentUser.uid]: now
-  }).catch(() => {});
+  const obj = { ...(chatData.typing || {}) };
+  obj[myId] = now;
+  sb.rpc("set_typing", { p_chat: chatId, p_val: obj }).then(() => {}, () => {});
 
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(clearTyping, 6000);
 }
 
 async function clearTyping() {
-  if (!currentUser || !chatId || isSaved) return;
+  if (!myId || !chatId || isSaved) return;
   try {
-    await updateDoc(doc(db, "chats", chatId), {
-      ["typing." + currentUser.uid]: deleteField()
-    });
+    const obj = { ...(chatData.typing || {}) };
+    delete obj[myId];
+    await sb.rpc("set_typing", { p_chat: chatId, p_val: obj });
   } catch (e) { /* ignore */ }
 }
 
@@ -260,7 +219,7 @@ window.openInfo = async function () {
   document.getElementById("info-modal-title").textContent =
     chatData.type === "channel" ? "اطلاعات کانال" : "اطلاعات گروه";
 
-  renderChatAvatar(document.getElementById("info-avatar"), chatData);
+  setInfoAvatar();
   if (isAdmin) {
     document.getElementById("info-avatar").onclick = () =>
       document.getElementById("chat-photo-input").click();
@@ -279,6 +238,15 @@ window.openInfo = async function () {
   await renderMembers();
 };
 
+function setInfoAvatar() {
+  const el = document.getElementById("info-avatar");
+  if (chatData && chatData.photo) {
+    el.innerHTML = `<img src="${chatData.photo}" alt="">`;
+  } else {
+    el.textContent = (chatData && chatData.type === "channel") ? "📢" : "👥";
+  }
+}
+
 window.closeInfo = function () {
   document.getElementById("info-modal").classList.remove("show");
 };
@@ -296,11 +264,11 @@ async function renderMembers() {
       <div class="member-line">
         <div class="avatar">${avatarHTML(info)}</div>
         <div class="member-mid">
-          <div class="chat-name">${escapeHTML(info.name || "کاربر")}${uid === currentUser.uid ? " (تو)" : ""}</div>
+          <div class="chat-name">${escapeHTML(info.name || "کاربر")}${uid === myId ? " (تو)" : ""}</div>
           <div class="chat-last">${info.username ? "@" + escapeHTML(info.username) : ""}</div>
         </div>
         ${admins.includes(uid) ? '<span class="crown">👑</span>' : ""}
-        ${isAdmin && uid !== currentUser.uid && uid !== chatData.createdBy
+        ${isAdmin && uid !== myId && uid !== chatData.created_by
           ? `<button class="mini-danger" onclick="removeMember('${uid}')">✖</button>` : ""}
       </div>`;
   }
@@ -313,23 +281,25 @@ window.addMember = async function () {
   let uid = null;
 
   if (q.startsWith("@")) {
-    const s = await getDoc(doc(db, "usernames", q.slice(1)));
-    if (s.exists()) uid = s.data().uid;
+    const r = await sb.from("profiles").select("id").eq("username", q.slice(1)).maybeSingle();
+    uid = r.data && r.data.id;
   } else if (/^(\+98|98|0)?9\d{9}$/.test(q.replace(/\s/g, ""))) {
     let p = q.replace(/\D/g, "");
     if (p.startsWith("98")) p = "0" + p.slice(2);
     if (p.length === 10) p = "0" + p;
-    const s = await getDoc(doc(db, "phones", p));
-    if (s.exists()) uid = s.data().uid;
+    const r = await sb.from("profiles").select("id").eq("phone", p).maybeSingle();
+    uid = r.data && r.data.id;
   } else if (q.includes("@")) {
-    const qs = await getDocs(query(collection(db, "users"), where("email", "==", q), limit(1)));
-    if (!qs.empty) uid = qs.docs[0].id;
+    const r = await sb.from("profiles").select("id").eq("email", q).limit(1);
+    uid = r.data && r.data[0] && r.data[0].id;
   }
 
   if (!uid) { alert("پیدا نشد ❌"); return; }
   if ((chatData.members || []).includes(uid)) { alert("از قبل عضوه"); return; }
 
-  await updateDoc(doc(db, "chats", chatId), { members: arrayUnion(uid) });
+  const { error } = await sb.rpc("add_member", { p_chat: chatId, p_user: uid });
+  if (error) { alert("نشد: " + error.message); return; }
+
   chatData.members = [...(chatData.members || []), uid];
   document.getElementById("add-member-q").value = "";
   await renderMembers();
@@ -338,7 +308,8 @@ window.addMember = async function () {
 
 window.removeMember = async function (uid) {
   if (!confirm("این عضو حذف شود؟")) return;
-  await updateDoc(doc(db, "chats", chatId), { members: arrayRemove(uid) });
+  const { error } = await sb.rpc("remove_member", { p_chat: chatId, p_user: uid });
+  if (error) { alert("نشد: " + error.message); return; }
   chatData.members = (chatData.members || []).filter(u => u !== uid);
   await renderMembers();
   updateSub();
@@ -348,7 +319,9 @@ window.saveChatInfo = async function () {
   const name = document.getElementById("info-name").value.trim();
   const description = document.getElementById("info-desc").value.trim();
   if (!name) { alert("نام نمی‌تواند خالی باشد"); return; }
-  await updateDoc(doc(db, "chats", chatId), { name, description });
+  const { error } = await sb.from("chats")
+    .update({ name, description }).eq("id", chatId);
+  if (error) { alert("ذخیره نشد: " + error.message); return; }
   chatData.name = name;
   chatData.description = description;
   document.getElementById("chat-title").textContent = name;
@@ -371,13 +344,14 @@ window.uploadChatPhoto = function (input) {
         const min = Math.min(img.width, img.height);
         ctx.drawImage(img, (img.width - min) / 2, (img.height - min) / 2, min, min, 0, 0, size, size);
         const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
-        await updateDoc(doc(db, "chats", chatId), { photo: dataUrl });
+        const { error } = await sb.from("chats").update({ photo: dataUrl }).eq("id", chatId);
+        if (error) throw error;
         chatData.photo = dataUrl;
-        setChatIcon(chatData);
-        renderChatAvatar(document.getElementById("info-avatar"), chatData);
+        setChatIcon();
+        setInfoAvatar();
         alert("عکس ذخیره شد ✅");
       } catch (err) {
-        showErr("خطای ذخیره عکس: " + (err.code || err.message));
+        showErr("خطای ذخیره عکس: " + err.message);
       }
     };
     img.src = e.target.result;
@@ -396,14 +370,10 @@ window.copyInfoInvite = function () {
 /* ================= عضویت با لینک ================= */
 
 window.joinChat = async function () {
-  if (!currentUser || !chatData) return;
-  try {
-    await updateDoc(doc(db, "chats", chatId), { members: arrayUnion(currentUser.uid) });
-    location.reload();
-  } catch (e) {
-    console.error(e);
-    alert("عضویت ناموفق بود");
-  }
+  if (!myId || !chatData) return;
+  const { error } = await sb.rpc("join_chat", { p_chat: chatId });
+  if (error) { alert("عضویت ناموفق بود"); return; }
+  location.reload();
 };
 
 /* ================= ↩️ پاسخ ================= */
@@ -413,7 +383,7 @@ window.replyTo = function (mid) {
   if (!d) return;
   replyState = {
     mid: mid,
-    name: d.senderName || "کاربر",
+    name: d.sender_name || "کاربر",
     preview: previewOf(d)
   };
   showReplyBar();
@@ -445,17 +415,13 @@ window.jumpTo = function (mid) {
 window.toggleReaction = async function (mid, emoji) {
   const d = messagesCache[mid];
   if (!d || d.deleted) return;
-  const cur = (d.reactions || {})[currentUser.uid];
-  const ref = doc(db, "chats", chatId, "messages", mid);
-  try {
-    if (cur === emoji) {
-      await updateDoc(ref, { ["reactions." + currentUser.uid]: deleteField() });
-    } else {
-      await updateDoc(ref, { ["reactions." + currentUser.uid]: emoji });
-    }
-  } catch (e) {
-    showErr("واکنش ثبت نشد: " + (e.code || e.message));
-  }
+  const cur = { ...(d.reactions || {}) };
+  if (cur[myId] === emoji) delete cur[myId];
+  else cur[myId] = emoji;
+
+  const { error } = await sb.from("messages")
+    .update({ reactions: cur }).eq("id", mid);
+  if (error) showErr("واکنش ثبت نشد: " + error.message);
 };
 
 window.reactFromMenu = function (mid, emoji) {
@@ -479,42 +445,37 @@ async function renderFwList() {
   const list = document.getElementById("fw-list");
   list.innerHTML = "<p class='hint'>⏳ ...</p>";
 
-  try {
-    const qs = await getDocs(
-      query(collection(db, "chats"), where("members", "array-contains", currentUser.uid))
-    );
+  const { data, error } = await sb.from("chats")
+    .select("*").contains("members", [myId]);
+  if (error) { list.innerHTML = "<p class='hint'>خطا</p>"; return; }
 
-    let html = "";
-    for (const dd of qs.docs) {
-      const c = dd.data();
-      let icon, title;
+  let html = "";
+  for (const c of (data || [])) {
+    let icon, title;
 
-      if (c.type === "saved") {
-        icon = "🔖";
-        title = "پیام‌های ذخیره‌شده";
-      } else if (c.type === "private") {
-        const otherUid = (c.members || []).find(u => u !== currentUser.uid);
-        const info = otherUid ? await getUserInfo(otherUid) : { name: "کاربر" };
-        icon = avatarHTML(info);
-        title = info.name || "کاربر";
-      } else {
-        if (c.type === "channel" && !(c.admins || []).includes(currentUser.uid)) continue;
-        icon = c.type === "channel" ? "📢" : "👥";
-        title = c.name || "چت";
-      }
-
-      html += `
-        <div class="fw-item" onclick="doForward('${dd.id}')">
-          <div class="avatar">${icon}</div>
-          <div>${escapeHTML(title)}</div>
-        </div>`;
+    if (c.type === "saved") {
+      icon = "🔖";
+      title = "پیام‌های ذخیره‌شده";
+    } else if (c.type === "private") {
+      const otherUid = (c.members || []).find(u => u !== myId);
+      const info = otherUid ? await getUserInfo(otherUid) : { name: "کاربر" };
+      icon = avatarHTML(info);
+      title = info.name || "کاربر";
+    } else {
+      if (c.type === "channel" && !(c.admins || []).includes(myId)) continue;
+      icon = c.type === "channel" ? "📢" : "👥";
+      title = c.name || "چت";
     }
 
-    if (!html) html = "<p class='hint'>چتی برای فوروارد نیست</p>";
-    list.innerHTML = html;
-  } catch (e) {
-    list.innerHTML = "<p class='hint'>خطا</p>";
+    html += `
+      <div class="fw-item" onclick="doForward('${c.id}')">
+        <div class="avatar">${icon}</div>
+        <div>${escapeHTML(title)}</div>
+      </div>`;
   }
+
+  if (!html) html = "<p class='hint'>چتی برای فوروارد نیست</p>";
+  list.innerHTML = html;
 }
 
 window.doForward = async function (targetId) {
@@ -522,33 +483,33 @@ window.doForward = async function (targetId) {
   if (!d || d.deleted) return;
 
   const nd = {
-    senderName: d.senderName || myName,
-    uid: currentUser.uid,
+    chat_id: targetId,
+    sender_name: d.sender_name || myName,
+    uid: myId,
     time: Date.now(),
     forwarded: true
   };
   if (d.text) nd.text = d.text;
   if (d.image) nd.image = d.image;
-  if (d.audio) { nd.audio = d.audio; nd.audioDuration = d.audioDuration || 0; }
+  if (d.audio) { nd.audio = d.audio; nd.audio_duration = d.audio_duration || 0; }
 
-  try {
-    await addDoc(collection(db, "chats", targetId, "messages"), nd);
-    await updateDoc(doc(db, "chats", targetId), {
-      lastMessage: "↪️ " + previewOf(d),
-      lastMessageTime: Date.now(),
-      lastMessageSender: currentUser.uid
-    });
-    closeForward();
-    alert("فوروارد شد ✅");
-  } catch (e) {
-    showErr("فوروارد نشد: " + (e.code || e.message));
-  }
+  const { error } = await sb.from("messages").insert(nd);
+  if (error) { showErr("فوروارد نشد: " + error.message); return; }
+
+  await sb.from("chats").update({
+    last_message: "↪️ " + previewOf(d),
+    last_message_time: Date.now(),
+    last_message_sender: myId
+  }).eq("id", targetId);
+
+  closeForward();
+  alert("فوروارد شد ✅");
 };
 
 /* ================= ارسال پیام متنی ================= */
 
 async function sendMessage() {
-  if (!chatData || !currentUser) return;
+  if (!chatData || !myId) return;
   if (!isPrivate && !isSaved && chatData.type === "channel" && !isAdmin) return;
 
   const input = document.getElementById("messageInput");
@@ -556,21 +517,26 @@ async function sendMessage() {
   if (!text) return;
 
   const msg = {
-    text: text, senderName: myName, uid: currentUser.uid, time: Date.now()
+    chat_id: chatId,
+    text: text,
+    sender_name: myName,
+    uid: myId,
+    time: Date.now()
   };
   if (replyState) {
-    msg.replyTo = {
-      mid: replyState.mid,
-      name: replyState.name,
-      text: replyState.preview
+    msg.reply_to = {
+      mid: replyState.mid, name: replyState.name, text: replyState.preview
     };
   }
 
-  await addDoc(collection(db, "chats", chatId, "messages"), msg);
+  const { error } = await sb.from("messages").insert(msg);
+  if (error) { showErr("ارسال نشد: " + error.message); return; }
 
-  updateDoc(doc(db, "chats", chatId), {
-    lastMessage: text, lastMessageTime: Date.now(), lastMessageSender: currentUser.uid
-  });
+  await sb.from("chats").update({
+    last_message: text,
+    last_message_time: Date.now(),
+    last_message_sender: myId
+  }).eq("id", chatId);
 
   input.value = "";
   input.focus();
@@ -584,7 +550,7 @@ window.sendMessage = sendMessage;
 
 window.sendImage = function (input) {
   const file = input.files[0];
-  if (!file || !currentUser) return;
+  if (!file || !myId) return;
 
   const reader = new FileReader();
   reader.onload = (e) => {
@@ -610,21 +576,27 @@ window.sendImage = function (input) {
         }
 
         const msg = {
-          text: "", image: dataUrl, senderName: myName, uid: currentUser.uid, time: Date.now()
+          chat_id: chatId, text: "", image: dataUrl,
+          sender_name: myName, uid: myId, time: Date.now()
         };
         if (replyState) {
-          msg.replyTo = {
+          msg.reply_to = {
             mid: replyState.mid, name: replyState.name, text: replyState.preview
           };
         }
 
-        await addDoc(collection(db, "chats", chatId, "messages"), msg);
-        updateDoc(doc(db, "chats", chatId), {
-          lastMessage: "🖼 عکس", lastMessageTime: Date.now(), lastMessageSender: currentUser.uid
-        });
+        const { error } = await sb.from("messages").insert(msg);
+        if (error) throw error;
+
+        await sb.from("chats").update({
+          last_message: "🖼 عکس",
+          last_message_time: Date.now(),
+          last_message_sender: myId
+        }).eq("id", chatId);
+
         cancelReply();
       } catch (err) {
-        showErr("خطای ارسال عکس: " + (err.code || err.message));
+        showErr("خطای ارسال عکس: " + err.message);
       }
     };
     img.src = e.target.result;
@@ -642,7 +614,7 @@ let recSeconds = 0;
 let recCancelled = false;
 
 window.startRecording = async function () {
-  if (!chatData || !currentUser) return;
+  if (!chatData || !myId) return;
   if (chatData.type === "channel" && !isAdmin) return;
   if (!navigator.mediaDevices || !window.MediaRecorder) {
     alert("مرورگرت از ضبط صدا پشتیبانی نمی‌کند");
@@ -678,19 +650,24 @@ window.startRecording = async function () {
       const reader = new FileReader();
       reader.onload = async (ev) => {
         const msg = {
-          text: "", audio: ev.target.result, audioDuration: recSeconds,
-          senderName: myName, uid: currentUser.uid, time: Date.now()
+          chat_id: chatId, text: "", audio: ev.target.result,
+          audio_duration: recSeconds,
+          sender_name: myName, uid: myId, time: Date.now()
         };
         if (replyState) {
-          msg.replyTo = {
+          msg.reply_to = {
             mid: replyState.mid, name: replyState.name, text: replyState.preview
           };
         }
-        await addDoc(collection(db, "chats", chatId, "messages"), msg);
-        updateDoc(doc(db, "chats", chatId), {
-          lastMessage: "🎤 پیام صوتی", lastMessageTime: Date.now(),
-          lastMessageSender: currentUser.uid
-        });
+        const { error } = await sb.from("messages").insert(msg);
+        if (error) { showErr("ارسال نشد: " + error.message); return; }
+
+        await sb.from("chats").update({
+          last_message: "🎤 پیام صوتی",
+          last_message_time: Date.now(),
+          last_message_sender: myId
+        }).eq("id", chatId);
+
         cancelReply();
       };
       reader.readAsDataURL(blob);
@@ -761,7 +738,7 @@ window.vplay = function (btn, mid) {
     aud.ontimeupdate = () => {
       const dur = (isFinite(aud.duration) && aud.duration > 0)
         ? aud.duration
-        : ((messagesCache[mid] || {}).audioDuration || 1);
+        : ((messagesCache[mid] || {}).audio_duration || 1);
       paintWave(mid, Math.min(aud.currentTime / dur, 1));
     };
     aud.onended = () => {
@@ -776,81 +753,80 @@ window.vplay = function (btn, mid) {
 
 /* ================= نمایش پیام‌ها ================= */
 
-function listenMessages() {
-  const q = query(collection(db, "chats", chatId, "messages"), orderBy("time"));
+async function loadMessages() {
+  const { data, error } = await sb.from("messages")
+    .select("*").eq("chat_id", chatId).order("time");
 
-  onSnapshot(q, (snapshot) => {
-    const box = document.getElementById("messages");
-    box.innerHTML = "";
-    messagesCache = {};
+  if (error) { showErr("خطای پیام‌ها: " + error.message); return; }
 
-    snapshot.forEach((docSnap) => {
-      const d = docSnap.data();
-      const mid = docSnap.id;
-      messagesCache[mid] = d;
+  const box = document.getElementById("messages");
+  box.innerHTML = "";
+  messagesCache = {};
 
-      const mine = d.uid === currentUser.uid;
-      const time = new Date(d.time).toLocaleTimeString("fa-IR", {
-        hour: "2-digit", minute: "2-digit"
-      });
+  (data || []).forEach((d) => {
+    messagesCache[d.id] = d;
+    box.innerHTML += messageHTML(d, d.id);
+  });
 
-      let inner = "";
-      if (d.deleted) {
-        inner = `<div class="text deleted-msg">🚫 این پیام حذف شده است</div>`;
-      } else {
-        // پاسخ
-        if (d.replyTo) {
-          inner += `
-            <div class="reply-box" onclick="jumpTo('${d.replyTo.mid}')">
-              <div class="reply-name">${escapeHTML(d.replyTo.name)}</div>
-              <div class="reply-text">${escapeHTML(d.replyTo.text || "")}</div>
-            </div>`;
-        }
-        if (d.image) inner += `<img class="msg-img" src="${d.image}" alt="عکس">`;
-        if (d.audio) inner += `
-          <div class="voice-row">
-            <button class="vplay" onclick="vplay(this,'${mid}')">▶</button>
-            <div class="wave" id="wave-${mid}">${barsHTML(hashSeed(mid))}</div>
-            <span class="voice-dur">${fmtDur(d.audioDuration || 0)}</span>
-            <audio id="aud-${mid}" src="${d.audio}" preload="none" style="display:none"></audio>
-          </div>`;
-        if (d.text) inner += `<div class="text">${escapeHTML(d.text)}</div>`;
-      }
+  box.scrollTop = box.scrollHeight;
+  markAsRead();
+}
 
-      const senderHtml = (!mine && !isPrivate && !isSaved)
-        ? `<div class="sender">${escapeHTML(d.senderName || "ناشناس")}</div>` : "";
+function messageHTML(d, mid) {
+  const mine = d.uid === myId;
+  const time = new Date(d.time).toLocaleTimeString("fa-IR", {
+    hour: "2-digit", minute: "2-digit"
+  });
 
-      const fwdTag = d.forwarded ? '<span class="fwd-tag">↪️ فوروارد</span>' : "";
-
-      const editedTag = (d.edited && !d.deleted)
-        ? '<span class="edited"> (ویرایش‌شده)</span>' : "";
-
-      // ری‌اکشن‌ها
-      let rHtml = "";
-      if (!d.deleted && d.reactions) {
-        const groups = {};
-        Object.entries(d.reactions).forEach(([uid, e]) => {
-          (groups[e] = groups[e] || []).push(uid);
-        });
-        for (const [e, uids] of Object.entries(groups)) {
-          const mineR = uids.includes(currentUser.uid);
-          rHtml += `<span class="rchip ${mineR ? "mine" : ""}" onclick="toggleReaction('${mid}','${e}')">${e}${uids.length > 1 ? " " + uids.length : ""}</span>`;
-        }
-      }
-
-      box.innerHTML += `
-        <div class="message ${mine ? "mine" : ""}" data-mid="${mid}">
-          ${senderHtml}
-          ${fwdTag}
-          ${inner}
-          <div class="time">${time}${editedTag}</div>
-          ${rHtml ? `<div class="rbar">${rHtml}</div>` : ""}
+  let inner = "";
+  if (d.deleted) {
+    inner = `<div class="text deleted-msg">🚫 این پیام حذف شده است</div>`;
+  } else {
+    if (d.reply_to) {
+      inner += `
+        <div class="reply-box" onclick="jumpTo('${d.reply_to.mid}')">
+          <div class="reply-name">${escapeHTML(d.reply_to.name)}</div>
+          <div class="reply-text">${escapeHTML(d.reply_to.text || "")}</div>
         </div>`;
-    });
+    }
+    if (d.image) inner += `<img class="msg-img" src="${d.image}" alt="عکس">`;
+    if (d.audio) inner += `
+      <div class="voice-row">
+        <button class="vplay" onclick="vplay(this,'${mid}')">▶</button>
+        <div class="wave" id="wave-${mid}">${barsHTML(hashSeed(mid))}</div>
+        <span class="voice-dur">${fmtDur(d.audio_duration || 0)}</span>
+        <audio id="aud-${mid}" src="${d.audio}" preload="none" style="display:none"></audio>
+      </div>`;
+    if (d.text) inner += `<div class="text">${escapeHTML(d.text)}</div>`;
+  }
 
-    box.scrollTop = box.scrollHeight;
-    markAsRead();
-  }, (err) => showErr("خطای پیام‌ها: " + err.code));
+  const senderHtml = (!mine && !isPrivate && !isSaved)
+    ? `<div class="sender">${escapeHTML(d.sender_name || "ناشناس")}</div>` : "";
+
+  const fwdTag = d.forwarded ? '<span class="fwd-tag">↪️ فوروارد</span>' : "";
+  const editedTag = (d.edited && !d.deleted)
+    ? '<span class="edited"> (ویرایش‌شده)</span>' : "";
+
+  let rHtml = "";
+  if (!d.deleted && d.reactions) {
+    const groups = {};
+    Object.entries(d.reactions).forEach(([uid, e]) => {
+      (groups[e] = groups[e] || []).push(uid);
+    });
+    for (const [e, uids] of Object.entries(groups)) {
+      const mineR = uids.includes(myId);
+      rHtml += `<span class="rchip ${mineR ? "mine" : ""}" onclick="toggleReaction('${mid}','${e}')">${e}${uids.length > 1 ? " " + uids.length : ""}</span>`;
+    }
+  }
+
+  return `
+    <div class="message ${mine ? "mine" : ""}" data-mid="${mid}">
+      ${senderHtml}
+      ${fwdTag}
+      ${inner}
+      <div class="time">${time}${editedTag}</div>
+      ${rHtml ? `<div class="rbar">${rHtml}</div>` : ""}
+    </div>`;
 }
 
 document.getElementById("messages").addEventListener("click", (e) => {
@@ -875,12 +851,11 @@ document.addEventListener("contextmenu", (e) => {
   const d = messagesCache[mid];
   if (!d || d.deleted) return;
 
-  const mine = d.uid === currentUser.uid;
+  const mine = d.uid === myId;
   let html = "";
 
-  // ردیف ری‌اکشن‌ها
   html += `<div class="react-row">${["👍", "❤️", "😂", "😮", "😢"]
-    .map(e => `<button onclick="reactFromMenu('${mid}','${e}')">${e}</button>`).join("")}</div>`;
+    .map(em => `<button onclick="reactFromMenu('${mid}','${em}')">${em}</button>`).join("")}</div>`;
 
   html += `<button onclick="replyTo('${mid}')">↩️ پاسخ</button>`;
   html += `<button onclick="openForward('${mid}')">↪️ فوروارد</button>`;
@@ -907,14 +882,20 @@ window.editMsg = async function (mid) {
   if (t === null) return;
   const nt = t.trim();
   if (!nt) { alert("متن خالی است"); return; }
-  await updateDoc(doc(db, "chats", chatId, "messages", mid), { text: nt, edited: true });
+  const { error } = await sb.from("messages")
+    .update({ text: nt, edited: true }).eq("id", mid);
+  if (error) showErr("ویرایش نشد: " + error.message);
 };
 
 window.deleteMsg = async function (mid) {
   if (!confirm("این پیام حذف شود؟")) return;
-  await updateDoc(doc(db, "chats", chatId, "messages", mid), {
-    deleted: true, text: "",
-    image: deleteField(), audio: deleteField(), audioDuration: deleteField(),
-    replyTo: deleteField()
-  });
+  const { error } = await sb.from("messages")
+    .update({
+      deleted: true, text: "",
+      image: null, audio: null, audio_duration: null,
+      reply_to: null
+    }).eq("id", mid);
+  if (error) showErr("حذف نشد: " + error.message);
 };
+
+start();
