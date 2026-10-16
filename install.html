@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0088cc">
+<link rel="manifest" href="manifest.json">
+<title>دانلود RZ-Chat</title>
+<link rel="stylesheet" href="style.css?v=8">
+<style>
+  /* ---------- استایل مخصوص صفحه دانلود ---------- */
+  .dl-hero {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 46px 20px 10px;
+    text-align: center;
+  }
+  .dl-hero h1 {
+    font-size: 34px;
+    color: #1b2a3a;
+    margin-bottom: 12px;
+  }
+  .dl-hero p {
+    color: #52627a;
+    font-size: 15px;
+    line-height: 2;
+    margin: 0 auto 8px;
+    max-width: 480px;
+  }
+  .dl-btns {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 26px 0 14px;
+  }
+  .dl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 15px 34px;
+    border-radius: 16px;
+    text-decoration: none;
+    font-family: tahoma;
+    font-size: 16px;
+    font-weight: bold;
+    box-shadow: 0 10px 26px rgba(0, 136, 204, 0.28);
+    transition: 0.2s;
+    cursor: pointer;
+    border: none;
+  }
+  .dl-btn:hover { transform: translateY(-3px); }
+  .dl-btn.android {
+    background: linear-gradient(135deg, #0088cc, #22a5e0);
+    color: #fff;
+  }
+  .dl-btn.ios {
+    background: #17212b;
+    color: #fff;
+  }
+  .dl-ic { font-size: 22px; }
+
+  .qr-card {
+    background: #fff;
+    display: inline-block;
+    padding: 14px 14px 10px;
+    border-radius: 18px;
+    box-shadow: 0 10px 30px rgba(0, 60, 100, 0.12);
+    margin-top: 4px;
+  }
+  .qr-card img {
+    width: 168px;
+    height: 168px;
+    display: block;
+    border-radius: 8px;
+  }
+  .qr-cap {
+    font-size: 12px;
+    color: #777;
+    margin-top: 8px;
+    text-align: center;
+  }
+
+  .steps-wrap {
+    max-width: 720px;
+    margin: 34px auto 50px;
+    padding: 0 20px;
+    display: grid;
+    gap: 16px;
+  }
+  .dl-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 6px 24px rgba(0, 60, 100, 0.07);
+    scroll-margin-top: 80px;
+  }
+  .dl-card h3 {
+    color: #0088cc;
+    margin-bottom: 12px;
+    font-size: 17px;
+  }
+  .dl-card ol {
+    padding-right: 20px;
+    line-height: 2.2;
+    color: #3c4c60;
+    font-size: 14px;
+  }
+  .apk-link {
+    display: inline-block;
+    background: #0088cc;
+    color: #fff;
+    text-decoration: none;
+    padding: 10px 22px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-family: tahoma;
+    margin: 4px 0 8px;
+  }
+  .apk-link:hover { background: #0077b5; }
+  .apk-missing {
+    display: none;
+    font-size: 12px;
+    color: #b54708;
+    background: #fff7e6;
+    border-radius: 8px;
+    padding: 8px 12px;
+    margin: 6px 0;
+    line-height: 1.9;
+  }
+
+  /* ---------- 🌙 حالت شب ---------- */
+  body.dark .dl-hero h1 { color: #e8eef5; }
+  body.dark .dl-hero p { color: #9db2c4; }
+  body.dark .dl-card,
+  body.dark .qr-card { background: #17212b; }
+  body.dark .dl-card ol { color: #c5d3de; }
+  body.dark .dl-btn.ios { background: #242f3d; }
+  body.dark .qr-cap { color: #8fa4b8; }
+  body.dark .apk-missing {
+    background: #2b2416;
+    color: #f0b429;
+  }
+
+  @media (max-width: 800px) {
+    .dl-hero h1 { font-size: 27px; }
+    .dl-btn { width: 100%; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-deco">
+    <div class="blob b1"></div>
+    <div class="blob b2"></div>
+    <div class="blob b3"></div>
+</div>
+
+<header class="site-header">
+    <div class="sh-inner">
+        <div class="sh-brand">
+            <img class="sh-logo" src="logo.svg" onerror="this.outerHTML='💬'" alt="RZ-Chat">
+            RZ-Chat
+        </div>
+        <nav class="sh-nav">
+            <a href="index.html">🏠 خانه</a>
+        </nav>
+    </div>
+</header>
+
+<!-- ============ دانلود RZ-Chat ============ -->
+<section class="dl-hero">
+    <h1>دانلود <span class="grad">RZ-Chat</span></h1>
+    <p>RZ-Chat را روی گوشی‌ات نصب کن — مثل یک اپ واقعی با آیکون روی صفحه اصلی، تمام‌صفحه و بدون نیاز به اپ‌استور.</p>
+
+    <div class="dl-btns">
+        <a class="dl-btn android" id="btn-android" href="#android-steps">
+            <span class="dl-ic">🤖</span> دانلود برای اندروید
+        </a>
+        <a class="dl-btn ios" href="#ios-steps">
+            <span class="dl-ic">📱</span> دانلود برای آیفون
+        </a>
+    </div>
+
+    <div class="qr-card">
+        <img src="data:image/png;base64,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" alt="QR Code RZ-Chat">
+        <div class="qr-cap">📷 با دوربین گوشی اسکن کن</div>
+    </div>
+</section>
+
+<!-- ============ راهنمای نصب ============ -->
+<div class="steps-wrap">
+
+    <div class="dl-card" id="android-steps">
+        <h3>🤖 نصب روی اندروید</h3>
+
+        <div id="apk-box">
+            <a class="apk-link" id="apk-link" href="rz-chat.apk" download>⬇️ دانلود مستقیم فایل APK</a>
+            <div class="apk-missing" id="apk-missing">
+                ⏳ فایل APK هنوز روی سایت آپلود نشده — فعلاً از «روش دوم» زیر استفاده کن.
+                (بعد از آپلود APK، این دکمه خودکار فعال می‌شود)
+            </div>
+        </div>
+
+        <ol>
+            <li>این صفحه را با <b>کروم</b> باز کن</li>
+            <li>روی دکمه <b>⋮</b> (بالای سمت راست مرورگر) بزن</li>
+            <li>گزینه <b>«Add to Home screen»</b> یا <b>«نصب برنامه»</b> را بزن</li>
+            <li>تأیید کن — آیکون RZ-Chat به صفحه اصلی گوشی‌ات اضافه می‌شود ✅</li>
+        </ol>
+    </div>
+
+    <div class="dl-card" id="ios-steps">
+        <h3>📱 نصب روی آیفون / آیپد</h3>
+        <ol>
+            <li>این صفحه را با <b>سافاری</b> باز کن (نه کروم!)</li>
+            <li>روی دکمه <b>اشتراک‌گذاری ⬆️</b> (پایین وسط صفحه) بزن</li>
+            <li>پایین اسکرول کن و <b>«Add to Home Screen»</b> را انتخاب کن</li>
+            <li>دکمه <b>Add</b> را بزن — آیکون RZ-Chat روی صفحه اصلیت اضافه می‌شود ✅</li>
+        </ol>
+    </div>
+
+</div>
+
+<footer class="site-footer">
+    <img class="f-logo" src="logo.svg" onerror="this.outerHTML='💬'" alt="">
+    <div>RZ-Chat — پیام‌رسان سریع و سبک</div>
+</footer>
+
+<script>
+/* 🌙 حالت شب */
+if (localStorage.getItem("dark") === "1") document.body.classList.add("dark");
+
+/* اگر فایل rz-chat.apk روی سایت باشد، دکمه اندروید به دانلود مستقیم تبدیل می‌شود */
+fetch("rz-chat.apk", { method: "HEAD" })
+    .then(function (r) {
+        if (r.ok) {
+            var b = document.getElementById("btn-android");
+            b.href = "rz-chat.apk";
+            b.setAttribute("download", "rz-chat.apk");
+            b.innerHTML = '<span class="dl-ic">🤖</span> دانلود APK اندروید';
+            document.getElementById("apk-link").style.display = "none";
+            document.getElementById("apk-missing").style.display = "none";
+        } else {
+            document.getElementById("apk-missing").style.display = "block";
+        }
+    })
+    .catch(function () {
+        document.getElementById("apk-missing").style.display = "block";
+    });
+</script>
+</body>
+</html>
