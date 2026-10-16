@@ -1590,3 +1590,139 @@ body.dark #msg-menu { background: #17212b; box-shadow: 0 8px 30px rgba(0,0,0,.6)
 body.dark #msg-menu button { color: #e8eef5; }
 body.dark #msg-menu button:hover { background: #242f3d; }
 body.dark #msg-menu button.danger { color: #e74c3c; }
+
+/* ============================================================
+   🔍 جستجو — اضافه‌شده v9.1 (فقط اضافه شد، چیزی حذف نشد)
+   ============================================================ */
+
+/* --- باکس جستجو در لیست چت‌ها و مخاطبین --- */
+
+.search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  margin: 10px 15px 0;
+  padding: 4px 14px;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.search-ic {
+  color: #0088cc;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.search-wrap input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 11px 0;
+  font-family: tahoma;
+  font-size: 13px;
+  background: transparent;
+  color: inherit;
+}
+
+/* --- عنوان بخش‌های نتیجه جستجو --- */
+
+.search-sec-title {
+  font-size: 12px;
+  font-weight: bold;
+  color: #0088cc;
+  margin: 14px 4px 8px;
+}
+
+mark {
+  background: #ffe58a;
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+}
+
+/* --- نوار جستجو داخل گفتگو --- */
+
+.search-bar {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.search-bar input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: #f0f2f5;
+  border-radius: 20px;
+  padding: 9px 14px;
+  font-family: tahoma;
+  font-size: 13px;
+  color: inherit;
+}
+
+.search-bar button {
+  border: none;
+  background: #e8f4fb;
+  color: #0088cc;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+#search-count {
+  font-size: 11px;
+  color: #666;
+  white-space: nowrap;
+  min-width: 44px;
+  text-align: center;
+}
+
+body.searching #messages {
+  height: calc(100vh - 205px);
+}
+
+/* --- هایلایت پیام‌های پیداشده --- */
+
+.message.search-hit {
+  outline: 2px solid #f1c40f;
+}
+
+.message.search-hit-active {
+  outline: 3px solid #e67e22;
+  box-shadow: 0 0 12px rgba(230, 126, 34, 0.5);
+}
+
+/* --- 🌙 حالت شب برای جستجو --- */
+
+body.dark .search-wrap,
+body.dark .search-bar {
+  background: #17212b;
+  box-shadow: none;
+}
+
+body.dark .search-wrap input,
+body.dark .search-bar input {
+  background: #242f3d;
+  color: #e8eef5;
+}
+
+body.dark .search-bar button {
+  background: #242f3d;
+  color: #5eb5f7;
+}
+
+body.dark #search-count { color: #8fa4b8; }
+
+body.dark .search-sec-title { color: #5eb5f7; }
+
+body.dark mark {
+  background: #6b5b17;
+  color: #fff;
+}
