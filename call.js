@@ -14,12 +14,30 @@ import { sb, getMyId, getMe, getUserInfo } from './auth.js';
 
 /* ---------------- تنظیمات ---------------- */
 
-const ICE_CONFIG = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-  ],
-};
+/* --- TURN (فاز ۲): برای وقتی شبکه اجازه اتصال مستقیم نمی‌دهد ---
+   سرویس رایگان expressturn.com (۱۰۰۰ گیگ در ماه، بدون کارت بانکی):
+   ۱) برو به https://www.expressturn.com و با ایمیل ثبت‌نام کن
+   ۲) در داشبورد «Username» و «Password» را کپی کن
+   ۳) دو خط زیر را جای PASTE_USERNAME و PASTE_PASSWORD پر کن
+   تا آن موقع فقط STUN استفاده می‌شود؛ بقیه چیزها فرقی نمی‌کند */
+const TURN_URLS = [
+  'turn:free.expressturn.com:3478?transport=udp',
+  'turn:free.expressturn.com:3478?transport=tcp',
+];
+const TURN_USER = 'PASTE_USERNAME';
+const TURN_PASS = 'PASTE_PASSWORD';
+
+const ICE_CONFIG = (() => {
+  const c = {
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+    ],
+  };
+  if (TURN_USER && TURN_PASS && !TURN_USER.includes('PASTE') && !TURN_PASS.includes('PASTE'))
+    c.iceServers.push({ urls: TURN_URLS, username: TURN_USER, credential: TURN_PASS });
+  return c;
+})();
 
 const RING_TIMEOUT_MS = 45000; /* اگر تا این وقت جواب نداد = بی‌پاسخ */
 const INCOMING_MAX_MS = 60000; /* زنگ ورودی حداکثر این‌قدر می‌ماند */
@@ -51,6 +69,7 @@ let sessCh = null;
 let peerUserCh = null;
 
 let pendingIce = [];
+let pendingRemoteIce = []; /* کاندیدهای رسیده قبل از setRemoteDescription */
 let iceReady = false;
 let timerInt = null;
 let timeoutT = null;
@@ -367,6 +386,7 @@ async function startCall(k) {
   answered = false;
   iceReady = false;
   pendingIce = [];
+  pendingRemoteIce = [];
   incomingOffer = null;
   peerId = chatPeer;
   callId = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -397,7 +417,7 @@ async function startCall(k) {
     answer: onAnswerMeta,
     'answer-chunk': onAnswerChunk,
     ice: onIce,
-    bye: () => endCall('done', 'تماس تمام شد'),
+    bye: onBye,
     decline: () => { logCall('📞 تماس رد شد'); endCall('declined', 'تماس رد شد'); },
     busy: () => { logCall('📞 تماس — خط مشغول'); endCall('busy', 'خط مشغول است'); },
   });
@@ -477,6 +497,7 @@ function deliverRing(p) {
   answered = false;
   iceReady = false;
   pendingIce = [];
+  pendingRemoteIce = [];
   incomingOffer = p.sdp;
   state = 'incoming';
 
@@ -512,7 +533,12 @@ async function acceptCall() {
     localStream = await getMedia(kind);
   } catch (e) {
     alert(permMsg(e));
-    sendOn(sessCh, 'bye', {});
+    /* کانال جلسه هنوز باز نشده؛ موقتاً باز کن و علت را به طرف مقابل بگو */
+    try {
+      const tmp = await openChannel(SESS_CH(callId), {});
+      sendOn(tmp, 'bye', { reason: 'media' });
+      setTimeout(() => { try { sb.removeChannel(tmp); } catch (e2) {} }, 800);
+    } catch (e2) {}
     endCall('failed', '');
     return;
   }
@@ -524,6 +550,7 @@ async function acceptCall() {
 
   try {
     await pc.setRemoteDescription({ type: 'offer', sdp: incomingOffer });
+    await drainRemoteIce();
     const ans = await pc.createAnswer();
     await pc.setLocalDescription(ans);
   } catch (e) {
@@ -535,7 +562,7 @@ async function acceptCall() {
 
   sessCh = await openChannel(SESS_CH(callId), {
     ice: onIce,
-    bye: () => endCall('done', 'تماس تمام شد'),
+    bye: onBye,
   });
 
   await sendSdp(sessCh, 'answer', { callId: callId }, pc.localDescription.sdp);
@@ -591,8 +618,12 @@ function buildPC() {
   p.onconnectionstatechange = () => {
     if (!pc) return;
     const s = pc.connectionState;
+    console.info('rz-call ICE state:', s);
     if (s === 'connected') onConnected();
     else if (s === 'failed') endCall('failed', 'اتصال برقرار نشد 😕');
+    else if (s === 'connecting') {
+      if (UI.hint) UI.hint.textContent = 'در حال جستجوی مسیر اتصال…';
+    }
     else if (s === 'disconnected') {
       setTimeout(() => {
         if (pc && pc.connectionState === 'disconnected') endCall('failed', 'ارتباط قطع شد');
@@ -605,7 +636,23 @@ function buildPC() {
 
 async function onIce(p) {
   if (!pc || !p || !p.cand) return;
+  /* اگر هنوز پیشنهاد/جواب ست نشده، کاندید را نگه دار (وگرنه دور ریخته می‌شد!) */
+  if (!pc.remoteDescription) {
+    pendingRemoteIce.push(p.cand);
+    console.info('rz-call ice queued (no remote description yet)');
+    return;
+  }
   try { await pc.addIceCandidate(p.cand); } catch (e) { /* کاندید بد را رد کن */ }
+}
+
+async function drainRemoteIce() {
+  if (!pc) return;
+  const list = pendingRemoteIce.slice();
+  pendingRemoteIce = [];
+  for (const c of list) {
+    if (!pc) return;
+    try { await pc.addIceCandidate(c); } catch (e) {}
+  }
 }
 
 function onAnswerMeta(p) {
@@ -630,6 +677,7 @@ async function applyAnswer(sdp) {
   if (state !== 'outgoing' || !pc || typeof sdp !== 'string') return;
   try {
     await pc.setRemoteDescription({ type: 'answer', sdp: sdp });
+    await drainRemoteIce();
     clearTimeout(timeoutT); timeoutT = null;
     stopRing();
     setStatus('در حال اتصال…');
@@ -638,6 +686,13 @@ async function applyAnswer(sdp) {
     console.error('rz-call setRemote error:', e);
     endCall('failed', 'خطا در اتصال');
   }
+}
+
+function onBye(p) {
+  if (p && p.reason === 'media')
+    endCall('failed', 'طرف مقابل به میکروفون/دوربین دسترسی نداشت');
+  else
+    endCall('done', 'تماس تمام شد');
 }
 
 function flushIce() {
@@ -654,6 +709,7 @@ function onConnected() {
   stopRing();
   setStatus('');
   UI.sub.textContent = '';
+  if (UI.hint) UI.hint.textContent = '';
   timerInt = setInterval(() => {
     const s = Math.floor((Date.now() - startedAt) / 1000);
     UI.timer.textContent = fmtDur(s);
@@ -673,6 +729,7 @@ function endCall(reason, msg) {
   clearTimeout(timeoutT); timeoutT = null;
   if (timerInt) { clearInterval(timerInt); timerInt = null; }
   iceReady = false;
+  pendingRemoteIce = [];
 
   try {
     if (pc) {
