@@ -96,8 +96,16 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 function shortErr(e) {
   try {
     const m = (e && (e.message || e.name)) || 'نامشخص';
-    return String(m).replace(/\s+/g, ' ').slice(0, 80);
+    return String(m).replace(/\s+/g, ' ').slice(0, 200);
   } catch (e2) { return 'نامشخص'; }
+}
+
+/* 🔧 خط‌های ناسازگار رو از SDP حذف کن — بعضی مرورگرهای موبایل روی
+   a=extmap-allow-mixed گیر می‌کنند و «Failed to parse» میدهند */
+function cleanSdp(sdp) {
+  return String(sdp || '').split(/\r\n/)
+    .filter((l) => l.trim() !== 'a=extmap-allow-mixed')
+    .join('\r\n');
 }
 
 function el(tag, cls, html) {
@@ -563,7 +571,7 @@ async function acceptCall() {
   localStream.getTracks().forEach((t) => pc.addTrack(t, localStream));
 
   try {
-    await pc.setRemoteDescription({ type: 'offer', sdp: incomingOffer });
+    await pc.setRemoteDescription({ type: 'offer', sdp: cleanSdp(incomingOffer) });
     await drainRemoteIce();
     const ans = await pc.createAnswer();
     await pc.setLocalDescription(ans);
@@ -685,7 +693,7 @@ function onAnswerChunk(p) {
 async function applyAnswer(sdp) {
   if (state !== 'outgoing' || !pc || typeof sdp !== 'string') return;
   try {
-    await pc.setRemoteDescription({ type: 'answer', sdp: sdp });
+    await pc.setRemoteDescription({ type: 'answer', sdp: cleanSdp(sdp) });
     await drainRemoteIce();
     clearTimeout(timeoutT); timeoutT = null;
     stopRing();
