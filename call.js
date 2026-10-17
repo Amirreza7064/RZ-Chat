@@ -8,6 +8,8 @@
    - زنگ خوردن و رد و بدل کردن اطلاعات: Supabase Realtime Broadcast
    - سرور رایگان STUN گوگل برای پشت NAT بودن
    - تمام ظاهر تماس از همین فایل تزریق می‌شود
+
+   آپدیت: صف ICE + باز کردن سریع کانال جلسه + نمایش پیام خطای دقیق + TURN آماده
    ============================================================ */
 
 import { sb, getMyId, getMe, getUserInfo } from './auth.js';
@@ -38,6 +40,8 @@ const ICE_CONFIG = (() => {
     c.iceServers.push({ urls: TURN_URLS, username: TURN_USER, credential: TURN_PASS });
   return c;
 })();
+
+const TURN_ON = !TURN_USER.includes('PASTE') && !TURN_PASS.includes('PASTE');
 
 const RING_TIMEOUT_MS = 45000; /* اگر تا این وقت جواب نداد = بی‌پاسخ */
 const INCOMING_MAX_MS = 60000; /* زنگ ورودی حداکثر این‌قدر می‌ماند */
@@ -87,6 +91,14 @@ let ansBuf = null; /* بافر تکه‌های SDP جواب */
 /* ---------------- ابزارهای کوچک ---------------- */
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
+
+/* برای نمایش خطای واقعی روی صفحه — تا مشکل معلوم بشه */
+function shortErr(e) {
+  try {
+    const m = (e && (e.message || e.name)) || 'نامشخص';
+    return String(m).replace(/\s+/g, ' ').slice(0, 80);
+  } catch (e2) { return 'نامشخص'; }
+}
 
 function el(tag, cls, html) {
   const d = document.createElement(tag);
@@ -529,16 +541,18 @@ async function acceptCall() {
   setStatus('در حال اتصال…');
   showActions('active');
 
+  /* 🔧 کانال جلسه را همین اول باز کن — قبلاً بعد از اجازه میکروفون باز می‌شد
+     و در آن فاصله پیام‌های طرف مقابل (ICE) گم می‌شد */
+  sessCh = await openChannel(SESS_CH(callId), {
+    ice: onIce,
+    bye: onBye,
+  });
+
   try {
     localStream = await getMedia(kind);
   } catch (e) {
     alert(permMsg(e));
-    /* کانال جلسه هنوز باز نشده؛ موقتاً باز کن و علت را به طرف مقابل بگو */
-    try {
-      const tmp = await openChannel(SESS_CH(callId), {});
-      sendOn(tmp, 'bye', { reason: 'media' });
-      setTimeout(() => { try { sb.removeChannel(tmp); } catch (e2) {} }, 800);
-    } catch (e2) {}
+    sendOn(sessCh, 'bye', { reason: 'media' });
     endCall('failed', '');
     return;
   }
@@ -555,15 +569,10 @@ async function acceptCall() {
     await pc.setLocalDescription(ans);
   } catch (e) {
     console.error('rz-call answer error:', e);
-    sendOn(sessCh, 'bye', {});
-    endCall('failed', 'خطا در اتصال');
+    sendOn(sessCh, 'bye', { reason: 'sdp' });
+    endCall('failed', 'خطا در اتصال (' + shortErr(e) + ')');
     return;
   }
-
-  sessCh = await openChannel(SESS_CH(callId), {
-    ice: onIce,
-    bye: onBye,
-  });
 
   await sendSdp(sessCh, 'answer', { callId: callId }, pc.localDescription.sdp);
   flushIce();
@@ -620,7 +629,7 @@ function buildPC() {
     const s = pc.connectionState;
     console.info('rz-call ICE state:', s);
     if (s === 'connected') onConnected();
-    else if (s === 'failed') endCall('failed', 'اتصال برقرار نشد 😕');
+    else if (s === 'failed') endCall('failed', 'اتصال برقرار نشد 😕' + (TURN_ON ? '' : ' [TURN خاموش]'));
     else if (s === 'connecting') {
       if (UI.hint) UI.hint.textContent = 'در حال جستجوی مسیر اتصال…';
     }
@@ -684,13 +693,15 @@ async function applyAnswer(sdp) {
     flushIce();
   } catch (e) {
     console.error('rz-call setRemote error:', e);
-    endCall('failed', 'خطا در اتصال');
+    endCall('failed', 'خطا در اتصال (' + shortErr(e) + ')');
   }
 }
 
 function onBye(p) {
   if (p && p.reason === 'media')
     endCall('failed', 'طرف مقابل به میکروفون/دوربین دسترسی نداشت');
+  else if (p && p.reason === 'sdp')
+    endCall('failed', 'سمت طرف مقابل خطای اتصال خورد 😕');
   else
     endCall('done', 'تماس تمام شد');
 }
@@ -705,6 +716,7 @@ function flushIce() {
 function onConnected() {
   if (timerInt) return;
   answered = true;
+  state = 'active'; /* 🔧 سمت تماس‌گیرنده هم active بشه تا قطع تماس درست کار کنه */
   startedAt = Date.now();
   stopRing();
   setStatus('');
