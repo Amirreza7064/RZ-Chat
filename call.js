@@ -29,8 +29,8 @@ const TURN_URLS = [
   'turn:free.expressturn.com:3478?transport=udp',
   'turn:free.expressturn.com:3478?transport=tcp',
 ];
-const TURN_USER = 'PASTE_USERNAME';
-const TURN_PASS = 'PASTE_PASSWORD';
+const TURN_USER = '000000002107617970';
+const TURN_PASS = '6eYtXvwuLdTLHAkkgJLJbCFoHjI=';
 
 const ICE_CONFIG = (() => {
   const c = {
