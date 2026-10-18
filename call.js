@@ -10,6 +10,9 @@
    - تمام ظاهر تماس از همین فایل تزریق می‌شود
 
    آپدیت: صف ICE + باز کردن سریع کانال جلسه + نمایش پیام خطای دقیق + TURN آماده
+   آپدیت ۲: رفع خراب شدن SDP موقع ارسال (تکه گم‌شده → «Invalid SDP line»)
+   + ارسال یک‌جای SDP به‌عنوان مسیر پشتیبان + کنترل طول SDP سمت گیرنده
+   + تکه‌های زودرس دور ریخته نمی‌شوند
    ============================================================ */
 
 import { sb, getMyId, getMe, getUserInfo } from './auth.js';
@@ -26,8 +29,8 @@ const TURN_URLS = [
   'turn:free.expressturn.com:3478?transport=udp',
   'turn:free.expressturn.com:3478?transport=tcp',
 ];
-const TURN_USER = '000000002107617970';
-const TURN_PASS = '6eYtXvwuLdTLHAkkgJLJbCFoHjI=';
+const TURN_USER = 'PASTE_USERNAME';
+const TURN_PASS = 'PASTE_PASSWORD';
 
 const ICE_CONFIG = (() => {
   const c = {
@@ -87,6 +90,8 @@ let ringMaster = null;
 
 let incBuf = null; /* بافر تکه‌های SDP زنگ ورودی */
 let ansBuf = null; /* بافر تکه‌های SDP جواب */
+let ringEarly = {}; /* 🔧 تکه‌های SDP که قبل از متا رسیدند — دور ریخته نمی‌شوند */
+let ansEarly = {};  /* 🔧 همان، برای جواب تماس */
 
 /* ---------------- ابزارهای کوچک ---------------- */
 
@@ -133,15 +138,38 @@ function chunkStr(s, n) {
   return out;
 }
 
-/* SDP ممکنه بزرگ باشه؛ برای اطمینان تکه‌تکه می‌فرستیم */
+/* 🔧🔴 مهم‌ترین فیکس: قبلاً every() روی آرایه‌ی «سوراخ‌دار» دروغ می‌گفت!
+   اگر حتی یک تکه گم یا جابه‌جا رسیده بود، join ناقص انجام می‌شد و SDP خراب
+   به setRemoteDescription می‌رسید → خطای «Invalid SDP line» (a=rtpmap...telephone-event).
+   حالا فقط وقتی «همه‌ی» تکه‌ها واقعاً رسیده باشند + طولش با طول اصلی بخواند، جواب می‌دهیم */
+function sdpBufDone(buf) {
+  if (!buf || !buf.n) return null;
+  for (let i = 0; i < buf.n; i++) {
+    if (typeof buf.parts[i] !== 'string' || buf.parts[i].length === 0) return null;
+  }
+  let sdp = '';
+  for (let i = 0; i < buf.n; i++) sdp += buf.parts[i];
+  if (buf.len && sdp.length !== buf.len) {
+    console.error('rz-call sdp size mismatch:', sdp.length, '!=', buf.len);
+    return null;
+  }
+  return sdp;
+}
+
+/* SDP ممکنه بزرگ باشه؛ تکه‌تکه می‌فرستیم
+   🔧 آپدیت: علاوه بر تکه‌ها، کل SDP یک‌جا هم فرستاده می‌شود (-full).
+   گیرنده هر مسیری که سالم و کامل برسد استفاده می‌کند + طول SDP کنترل می‌شود */
 async function sendSdp(ch, ev, base, sdp) {
-  const parts = chunkStr(sdp || '', 1800);
-  const meta = Object.assign({}, base, { sdpN: parts.length, sdpLen: (sdp || '').length });
+  const s = sdp || '';
+  const parts = chunkStr(s, 1200);
+  const meta = Object.assign({}, base, { sdpN: parts.length, sdpLen: s.length });
   await sendOn(ch, ev, meta);
+  await sendOn(ch, ev + '-full', Object.assign({}, base, { sdp: s, sdpLen: s.length }));
   for (let i = 0; i < parts.length; i++) {
     await sendOn(ch, ev + '-chunk', {
-      callId: base.callId, i: i, n: parts.length, part: parts[i],
+      callId: base.callId, i: i, n: parts.length, part: parts[i], len: s.length,
     });
+    await sleep(25); /* فاصله‌ی کوچک بین تکه‌ها تا هیچ‌کدام قورت داده نشود */
   }
 }
 
@@ -436,6 +464,7 @@ async function startCall(k) {
   sessCh = await openChannel(SESS_CH(callId), {
     answer: onAnswerMeta,
     'answer-chunk': onAnswerChunk,
+    'answer-full': onAnswerFull,
     ice: onIce,
     bye: onBye,
     decline: () => { logCall('📞 تماس رد شد'); endCall('declined', 'تماس رد شد'); },
@@ -475,28 +504,43 @@ function onRingMeta(p) {
 
   if (state !== 'idle') { sendBusy(p.callId); return; } /* مشغولیم — خبر بده */
 
+  /* 🔧 متای تکراری بافر را نبندد (تکه‌های رسیده از بین نروند) */
+  if (incBuf && incBuf.callId === p.callId && incBuf.n === p.sdpN) return;
+  if (incBuf && incBuf.t) clearTimeout(incBuf.t);
+
   incBuf = {
     callId: p.callId,
     kind: (p.kind === 'video') ? 'video' : 'audio',
     from: p.from,
     name: p.name || 'کاربر',
     n: p.sdpN,
+    len: (typeof p.sdpLen === 'number') ? p.sdpLen : 0,
     parts: new Array(p.sdpN),
+    full: null,
     t: setTimeout(() => { incBuf = null; }, 15000), /* اگر ناقص ماند بی‌خیال */
   };
+
+  /* 🔧 تکه‌هایی که زودتر از متا رسیده بودند حالا داخل بافر بریز */
+  const early = ringEarly[p.callId] || [];
+  delete ringEarly[p.callId];
+  early.forEach(ingestRingChunk);
+  tryRingFinish();
 }
 
-function onRingChunk(p) {
-  if (!incBuf || !p || p.callId !== incBuf.callId) return;
-  if (typeof p.i !== 'number' || typeof p.part !== 'string') return;
-
+function ingestRingChunk(p) {
+  if (!incBuf || !p) return;
+  if (typeof p.len === 'number' && !incBuf.len) incBuf.len = p.len;
   incBuf.parts[p.i] = p.part;
-  if (!incBuf.parts.every(Boolean)) return;
+}
+
+function tryRingFinish() {
+  if (!incBuf) return;
+  const sdp = incBuf.full || sdpBufDone(incBuf);
+  if (!sdp) return;
 
   const meta = incBuf;
-  const sdp = meta.parts.join('');
+  if (meta.t) clearTimeout(meta.t);
   incBuf = null;
-  clearTimeout(meta.t);
 
   deliverRing({
     callId: meta.callId,
@@ -505,6 +549,32 @@ function onRingChunk(p) {
     name: meta.name,
     sdp: sdp,
   });
+}
+
+/* 🔧 کل SDP یک‌جا رسید — مسیر پشتیبانِ تکه‌تکه */
+function onRingFull(p) {
+  if (!incBuf || !p || p.callId !== incBuf.callId) return;
+  if (typeof p.sdp !== 'string' || !p.sdp) return;
+  if (incBuf.len && p.sdp.length !== incBuf.len) {
+    console.error('rz-call ring-full size mismatch:', p.sdp.length, '!=', incBuf.len);
+    return;
+  }
+  incBuf.full = p.sdp;
+  tryRingFinish();
+}
+
+function onRingChunk(p) {
+  if (!p || typeof p.callId !== 'string' || typeof p.i !== 'number' || typeof p.part !== 'string') return;
+
+  if (!incBuf || p.callId !== incBuf.callId) {
+    /* 🔧 تکه زودرس — قبل از متا رسید؛ دور نریز، نگه دار */
+    if (!ringEarly[p.callId]) ringEarly[p.callId] = [];
+    if (ringEarly[p.callId].length < 60) ringEarly[p.callId].push(p);
+    return;
+  }
+
+  ingestRingChunk(p);
+  tryRingFinish();
 }
 
 function deliverRing(p) {
@@ -675,19 +745,67 @@ async function drainRemoteIce() {
 function onAnswerMeta(p) {
   if (state !== 'outgoing' || !p || p.callId !== callId) return;
   if (typeof p.sdpN !== 'number' || !p.sdpN) return;
-  ansBuf = { n: p.sdpN, parts: new Array(p.sdpN) };
+
+  /* 🔧 متای تکراری بافر را نبندد */
+  if (ansBuf && ansBuf.callId === p.callId && ansBuf.n === p.sdpN) return;
+  if (ansBuf && ansBuf.t) clearTimeout(ansBuf.t);
+
+  ansBuf = {
+    callId: p.callId,
+    n: p.sdpN,
+    len: (typeof p.sdpLen === 'number') ? p.sdpLen : 0,
+    parts: new Array(p.sdpN),
+    full: null,
+    t: setTimeout(() => { ansBuf = null; }, 12000), /* اگر ناقص ماند بی‌خیال */
+  };
+
+  /* 🔧 تکه‌های زودرس را داخل بافر بریز */
+  const early = ansEarly[p.callId] || [];
+  delete ansEarly[p.callId];
+  early.forEach(ingestAnsChunk);
+  tryAnswerFinish();
+}
+
+function ingestAnsChunk(p) {
+  if (!ansBuf || !p) return;
+  if (typeof p.len === 'number' && !ansBuf.len) ansBuf.len = p.len;
+  ansBuf.parts[p.i] = p.part;
+}
+
+function tryAnswerFinish() {
+  if (!ansBuf) return;
+  const sdp = ansBuf.full || sdpBufDone(ansBuf);
+  if (!sdp) return;
+
+  if (ansBuf.t) clearTimeout(ansBuf.t);
+  ansBuf = null;
+  applyAnswer(sdp);
+}
+
+/* 🔧 کل SDP یک‌جا رسید — مسیر پشتیبانِ تکه‌تکه */
+function onAnswerFull(p) {
+  if (!ansBuf || !p || p.callId !== callId) return;
+  if (typeof p.sdp !== 'string' || !p.sdp) return;
+  if (ansBuf.len && p.sdp.length !== ansBuf.len) {
+    console.error('rz-call answer-full size mismatch:', p.sdp.length, '!=', ansBuf.len);
+    return;
+  }
+  ansBuf.full = p.sdp;
+  tryAnswerFinish();
 }
 
 function onAnswerChunk(p) {
-  if (!ansBuf || !p || p.callId !== callId) return;
-  if (typeof p.i !== 'number' || typeof p.part !== 'string') return;
+  if (!p || typeof p.callId !== 'string' || typeof p.i !== 'number' || typeof p.part !== 'string') return;
 
-  ansBuf.parts[p.i] = p.part;
-  if (!ansBuf.parts.every(Boolean)) return;
+  if (!ansBuf || p.callId !== callId) {
+    /* 🔧 تکه زودرس — نگه دار تا متا برسد */
+    if (!ansEarly[p.callId]) ansEarly[p.callId] = [];
+    if (ansEarly[p.callId].length < 60) ansEarly[p.callId].push(p);
+    return;
+  }
 
-  const sdp = ansBuf.parts.join('');
-  ansBuf = null;
-  applyAnswer(sdp);
+  ingestAnsChunk(p);
+  tryAnswerFinish();
 }
 
 async function applyAnswer(sdp) {
@@ -790,8 +908,11 @@ function endCall(reason, msg) {
     state = 'idle';
   }, wait);
 
-  if (incBuf) { clearTimeout(incBuf.t); incBuf = null; }
+  if (incBuf) { if (incBuf.t) clearTimeout(incBuf.t); incBuf = null; }
+  if (ansBuf && ansBuf.t) clearTimeout(ansBuf.t);
   ansBuf = null;
+  ringEarly = {};
+  ansEarly = {};
 }
 
 async function logCall(text) {
@@ -862,6 +983,7 @@ async function boot() {
   inboxCh = await openChannel(USER_CH(myId), {
     ring: onRingMeta,
     'ring-chunk': onRingChunk,
+    'ring-full': onRingFull,
     cancel: onCancel,
   });
   ready = true;
