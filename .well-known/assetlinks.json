@@ -1,8 +1,10 @@
 [{
-      "relation": ["delegate_permission/common.handle_all_urls"],
-      "target": {
-        "namespace": "android_app",
-        "package_name": "com.rzai.rzchat",
-        "sha256_cert_fingerprints": ["60:D6:76:6B:FC:60:2A:7B:F2:40:11:5A:52:FC:C9:24:FF:6F:34:D6:AD:A4:16:18:0D:30:1C:4A:FA:24:78:11"]
-      }
-    }]
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.rzai.rzchat",
+    "sha256_cert_fingerprints": [
+      "D4:BF:44:27:09:6D:E1:68:3C:91:F7:7C:BA:8B:13:74:34:E9:6F:FA:1C:C3:23:CF:01:36:28:5C:2D:49:4E:37"
+    ]
+  }
+}]
