@@ -4,7 +4,8 @@
     "namespace": "android_app",
     "package_name": "com.rzai.rzchat",
     "sha256_cert_fingerprints": [
-      "D4:BF:44:27:09:6D:E1:68:3C:91:F7:7C:BA:8B:13:74:34:E9:6F:FA:1C:C3:23:CF:01:36:28:5C:2D:49:4E:37"
+      "D4:BF:44:27:09:6D:E1:68:3C:91:F7:7C:BA:8B:13:74:34:E9:6F:FA:1C:C3:23:CF:01:36:28:5C:2D:49:4E:37",
+      "C7:09:93:75:5D:FB:96:83:2D:5C:87:8B:F8:40:08:69:86:4B:CA:03:29:CC:76:FA:3C:C0:72:0B:F4:75:64:A0"
     ]
   }
 }]
