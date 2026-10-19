@@ -1728,7 +1728,7 @@ body.dark mark {
 }
 
 /* ============================================================
-   📏 فیکس پیام‌های بلند
+   📏 فیکس پیام‌های بلند + تشخیص هوشمند جهت
    ============================================================ */
 
 .message,
@@ -1736,6 +1736,7 @@ body.dark mark {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
+  unicode-bidi: plaintext;
 }
 
 .message .text {
