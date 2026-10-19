@@ -1726,3 +1726,18 @@ body.dark mark {
   background: #6b5b17;
   color: #fff;
 }
+
+/* ============================================================
+   📏 فیکس پیام‌های بلند
+   ============================================================ */
+
+.message,
+.message .text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.message .text {
+  max-width: 100%;
+}
