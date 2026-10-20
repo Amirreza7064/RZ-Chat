@@ -82,6 +82,14 @@ function updateSub() {
 
   if (isSaved) { el.textContent = "فقط برای خودت"; return; }
 
+  /* 🚫 اگر بلاکی در کار است، همان را نشان بده (گام ۶) */
+  if (blockState.i_blocked || blockState.blocked_me) {
+    el.textContent = blockState.i_blocked
+      ? "🚫 این کاربر مسدود است — برای آزادسازی روی پیام راست‌کلیک کن"
+      : "🚫 شما توسط این کاربر مسدود شده‌اید";
+    return;
+  }
+
   const typing = chatData.typing || {};
   const now = Date.now();
   const writing = Object.entries(typing).find(([uid, ts]) =>
@@ -134,6 +142,55 @@ async function refreshTicks() {
 }
 
 setInterval(refreshTicks, 4000);
+
+/* ================= 🚫 بلاک کاربر (گام ۶) ================= */
+
+let blockState = { i_blocked: false, blocked_me: false };
+
+async function loadBlockState() {
+  if (!isPrivate || !otherInfo || !otherInfo.id) return;
+  try {
+    const { data, error } = await sb.rpc("block_status", { p_chat: chatId });
+    if (error || !data) return;
+    blockState = { i_blocked: !!data.i_blocked, blocked_me: !!data.blocked_me };
+    applyBlockUI();
+  } catch (e) { /* ignore */ }
+}
+
+function applyBlockUI() {
+  if (!isPrivate) return;
+  if (blockState.i_blocked || blockState.blocked_me) {
+    document.getElementById("composer").style.display = "none";
+    const el = document.getElementById("chat-sub");
+    if (el) el.textContent = blockState.i_blocked
+      ? "🚫 این کاربر مسدود است — برای آزادسازی روی پیام راست‌کلیک کن"
+      : "🚫 شما توسط این کاربر مسدود شده‌اید";
+  }
+}
+
+window.toggleBlock = async function () {
+  if (!isPrivate || !otherInfo || !otherInfo.id) return;
+  try {
+    if (blockState.i_blocked) {
+      const { error } = await sb.from("blocked")
+        .delete().eq("blocker", myId).eq("blocked", otherInfo.id);
+      if (error) { showErr("برداشتن مسدودی نشد: " + error.message); return; }
+      alert("مسدودی برداشته شد ✅");
+    } else {
+      if (!confirm("این کاربر مسدود شود؟\nدیگر هیچ‌کدام نمی‌توانید به هم پیام بدهید.")) return;
+      const { error } = await sb.from("blocked")
+        .insert({ blocker: myId, blocked: otherInfo.id });
+      if (error) { showErr("مسدودسازی نشد: " + error.message); return; }
+      alert("مسدود شد 🚫");
+    }
+    blockState = { i_blocked: false, blocked_me: false };
+    await loadBlockState();
+    if (!blockState.i_blocked && !blockState.blocked_me) {
+      showComposer();
+      updateSub();
+    }
+  } catch (e) { showErr("خطای بلاک: " + e.message); }
+};
 
 /* ================= شروع ================= */
 
@@ -221,6 +278,7 @@ async function start() {
       .subscribe();
 
     if (isPrivate) setInterval(refreshPeer, 30000);
+    loadBlockState();
 
     const input = document.getElementById("messageInput");
     input.addEventListener("input", setTyping);
@@ -585,6 +643,14 @@ async function sendMessage() {
   if (!chatData || !myId) return;
   if (!isPrivate && !isSaved && chatData.type === "channel" && !isAdmin) return;
 
+  /* 🚫 جلوگیری از ارسال در حالت بلاک (گام ۶) */
+  if (blockState.i_blocked || blockState.blocked_me) {
+    showErr(blockState.i_blocked
+      ? "این کاربر مسدود است — اول آزادش کن"
+      : "تو توسط این کاربر مسدود شده‌ای");
+    return;
+  }
+
   const input = document.getElementById("messageInput");
   const text = input.value.trim();
   if (!text) return;
@@ -946,6 +1012,13 @@ document.addEventListener("contextmenu", (e) => {
 
   html += `<button onclick="replyTo('${mid}')">↩️ پاسخ</button>`;
   html += `<button onclick="openForward('${mid}')">↪️ فوروارد</button>`;
+
+  /* 🚫 مسدود/آزادسازی در چت خصوصی (گام ۶) */
+  if (isPrivate && !isSaved && otherInfo && otherInfo.id) {
+    html += `<button class="${blockState.i_blocked ? "" : "danger"}" onclick="toggleBlock()">`
+      + (blockState.i_blocked ? "✅ آزادسازی مسدودی" : "🚫 مسدود کردن")
+      + `</button>`;
+  }
 
   if (mine && d.text && !d.image && !d.audio && !d.forwarded) {
     html += `<button onclick="editMsg('${mid}')">✏️ ویرایش</button>`;
