@@ -50,6 +50,32 @@ function showComposer() {
   document.getElementById("send-box").style.display = "flex";
 }
 
+/* ================= 🟢 حضور آنلاین ================= */
+
+function lastSeenText(ts) {
+  const d = Date.now() - ts;
+  if (d < 65000) return "🟢 آنلاین";
+  const m = Math.floor(d / 60000);
+  if (m < 60) return "آخرین بازدید " + m + " دقیقه پیش";
+  const h = Math.floor(m / 60);
+  if (h < 24) return "آخرین بازدید " + h + " ساعت پیش";
+  const dd = Math.floor(h / 24);
+  if (dd < 30) return "آخرین بازدید " + dd + " روز پیش";
+  return "آخرین بازدید خیلی وقت پیش";
+}
+
+async function heartbeat() {
+  if (!myId) return;
+  sb.from("profiles").update({ last_seen: Date.now() })
+    .eq("id", myId).then(() => {}, () => {});
+}
+
+async function refreshPeer() {
+  if (!isPrivate || !otherInfo || !otherInfo.id) return;
+  const info = await getUserInfo(otherInfo.id);
+  if (info) { otherInfo = info; updateSub(); }
+}
+
 function updateSub() {
   const el = document.getElementById("chat-sub");
   if (!el || !chatData) return;
@@ -64,6 +90,10 @@ function updateSub() {
   if (writing) { el.textContent = "✍️ در حال نوشتن..."; return; }
 
   if (isPrivate) {
+    if (otherInfo && otherInfo.last_seen) {
+      el.textContent = lastSeenText(otherInfo.last_seen);
+      return;
+    }
     el.textContent = (otherInfo && otherInfo.username)
       ? "@" + otherInfo.username : "چت خصوصی";
     return;
@@ -86,6 +116,10 @@ function markAsRead() {
 async function start() {
   if (!await initAuth()) return;
   myId = getMyId();
+
+  /* 🟢 هر ۳۰ ثانیه خودم را آنلاین نشان بده */
+  heartbeat();
+  setInterval(heartbeat, 30000);
   const meData = getMe();
   myName = meData.name || "کاربر";
 
@@ -161,6 +195,8 @@ async function start() {
         { event: "*", schema: "public", table: "messages", filter: "chat_id=eq." + chatId },
         () => loadMessages())
       .subscribe();
+
+    if (isPrivate) setInterval(refreshPeer, 30000);
 
     const input = document.getElementById("messageInput");
     input.addEventListener("input", setTyping);
