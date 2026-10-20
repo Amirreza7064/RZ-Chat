@@ -42,9 +42,20 @@ const byNewest = (a, b) => lastTime(b[1]) - lastTime(a[1]);
 
 /* ---------- شروع ---------- */
 
+/* 🟢 حضور آنلاین */
+async function heartbeat() {
+  if (!myId) return;
+  sb.from("profiles").update({ last_seen: Date.now() })
+    .eq("id", myId).then(() => {}, () => {});
+}
+
 async function start() {
   if (!await initAuth()) return;
   myId = getMyId();
+
+  /* 🟢 هر ۳۰ ثانیه خودم را آنلاین نشان بده */
+  heartbeat();
+  setInterval(heartbeat, 30000);
   myData = getMe();
 
   const required = ["my-avatar", "user-name", "chat-list", "contact-list",
