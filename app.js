@@ -110,13 +110,9 @@ function markAsRead() {
     last_read_time: Date.now(), mark_unread: false
   }, { onConflict: "user_id,chat_id" }).then(() => {}, () => {});
 
-  /* ✓✓ پیام‌های طرف مقابل را خوانده‌شده علامت بزن (گام ۴) */
+  /* ✓✓ با تابع امن دیتابیس — از فیلتر RLS رد نمی‌شه (گام ۴) */
   if (!isSaved) {
-    sb.from("messages").update({ seen: true })
-      .eq("chat_id", chatId)
-      .neq("uid", myId)
-      .eq("seen", false)
-      .then(() => {}, () => {});
+    sb.rpc("mark_chat_seen", { p_chat: chatId }).then(() => {}, () => {});
   }
 }
 
