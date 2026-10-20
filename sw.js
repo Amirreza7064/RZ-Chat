@@ -1,4 +1,6 @@
-const CACHE = "rz-chat-v9";
+/* 🧹 RZ-Chat Service Worker — همیشه اول شبکه، کش فقط برای آفلاین */
+
+const CACHE = "rz-chat-v10";
 
 self.addEventListener("install", (e) => {
   self.skipWaiting();
@@ -17,24 +19,22 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
-  const h = url.hostname;
 
-  if (h.includes("supabase") || h.includes("googleapis") ||
-      h.includes("gstatic") || h.includes("firebaseio") ||
-      h.includes("jsdelivr")) return;
+  // فقط فایل‌های خود سایت — بقیه (سوپابیس، jsdelivr و...) دست نزن
+  if (url.origin !== location.origin) return;
 
   e.respondWith((async () => {
     try {
-      const fresh = await fetch(req);
+      // no-cache یعنی: همیشه از سرور بپرس عوض شده یا نه — دیگه CSS کهنه نداریم!
+      const fresh = await fetch(req, { cache: "no-cache" });
       const cache = await caches.open(CACHE);
       cache.put(req, fresh.clone()).catch(() => {});
       return fresh;
     } catch (err) {
-      const cache = await caches.open(CACHE);
-      const hit = await cache.match(req);
+      const hit = await caches.match(req);
       if (hit) return hit;
       if (req.mode === "navigate") {
-        const idx = await cache.match("./index.html");
+        const idx = await caches.match("./index.html");
         if (idx) return idx;
       }
       throw err;
