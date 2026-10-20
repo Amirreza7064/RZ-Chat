@@ -55,7 +55,7 @@ function avatarHTML(data) {
 
 async function getUserInfo(uid) {
   const { data } = await sb.from("profiles")
-    .select("id,email,phone,name,username,bio,photo")
+    .select("id,email,phone,name,username,bio,photo,last_seen")
     .eq("id", uid).maybeSingle();
   return data || { id: uid, name: "کاربر" };
 }
