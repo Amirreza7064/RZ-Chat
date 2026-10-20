@@ -110,9 +110,12 @@ function markAsRead() {
     last_read_time: Date.now(), mark_unread: false
   }, { onConflict: "user_id,chat_id" }).then(() => {}, () => {});
 
-  /* ✓✓ با تابع امن دیتابیس — از فیلتر RLS رد نمی‌شه (گام ۴) */
+  /* ✓✓ با تابع امن دیتابیس (گام ۴) — از این به بعد ارور مخفی نمی‌ماند */
   if (!isSaved) {
-    sb.rpc("mark_chat_seen", { p_chat: chatId }).then(() => {}, () => {});
+    sb.rpc("mark_chat_seen", { p_chat: chatId }).then(
+      () => {},
+      (e) => { console.error("mark_chat_seen:", e); showErr("تیک: " + e.message); }
+    );
   }
 }
 
