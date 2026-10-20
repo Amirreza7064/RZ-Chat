@@ -109,6 +109,15 @@ function markAsRead() {
     user_id: myId, chat_id: chatId,
     last_read_time: Date.now(), mark_unread: false
   }, { onConflict: "user_id,chat_id" }).then(() => {}, () => {});
+
+  /* ✓✓ پیام‌های طرف مقابل را خوانده‌شده علامت بزن (گام ۴) */
+  if (!isSaved) {
+    sb.from("messages").update({ seen: true })
+      .eq("chat_id", chatId)
+      .neq("uid", myId)
+      .eq("seen", false)
+      .then(() => {}, () => {});
+  }
 }
 
 /* ================= شروع ================= */
@@ -862,6 +871,11 @@ function messageHTML(d, mid) {
   const editedTag = (d.edited && !d.deleted)
     ? '<span class="edited"> (ویرایش‌شده)</span>' : "";
 
+  /* ✓✓ تیک خوانده‌شدن برای پیام‌های خودم (گام ۴) */
+  const tick = (mine && !isSaved)
+    ? (d.seen ? ' <span class="ticks">✓✓</span>' : ' <span class="ticks">✓</span>')
+    : "";
+
   let rHtml = "";
   if (!d.deleted && d.reactions) {
     const groups = {};
@@ -879,7 +893,7 @@ function messageHTML(d, mid) {
       ${senderHtml}
       ${fwdTag}
       ${inner}
-      <div class="time">${time}${editedTag}</div>
+      <div class="time">${time}${editedTag}${tick}</div>
       ${rHtml ? `<div class="rbar">${rHtml}</div>` : ""}
     </div>`;
 }
