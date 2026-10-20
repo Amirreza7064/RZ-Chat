@@ -109,15 +109,31 @@ function markAsRead() {
     user_id: myId, chat_id: chatId,
     last_read_time: Date.now(), mark_unread: false
   }, { onConflict: "user_id,chat_id" }).then(() => {}, () => {});
-
-  /* ✓✓ با تابع امن دیتابیس (گام ۴) — از این به بعد ارور مخفی نمی‌ماند */
-  if (!isSaved) {
-    sb.rpc("mark_chat_seen", { p_chat: chatId }).then(
-      () => {},
-      (e) => { console.error("mark_chat_seen:", e); showErr("تیک: " + e.message); }
-    );
-  }
 }
+
+/* ================= ✓✓ تیک خوانده‌شدن (گام ۴) ================= */
+/* تیک از مسیر chat_meta می‌آید — بدون آپدیت روی جدول messages */
+
+let otherReadTime = 0;
+
+async function refreshTicks() {
+  if (!myId || !chatId || isSaved) return;
+  try {
+    const { data, error } = await sb.rpc("chat_last_read", { p_chat: chatId });
+    if (error || data === null || data === undefined) return;
+    const t = Number(data);
+    if (!isFinite(t) || t === otherReadTime) return;
+    otherReadTime = t;
+    document.querySelectorAll("#messages .message.mine").forEach((el) => {
+      const d = messagesCache[el.getAttribute("data-mid")];
+      const tk = el.querySelector(".ticks");
+      if (!d || !tk) return;
+      tk.textContent = (d.time || 0) <= otherReadTime ? "✓✓" : "✓";
+    });
+  } catch (e) { /* بی‌خیال */ }
+}
+
+setInterval(refreshTicks, 4000);
 
 /* ================= شروع ================= */
 
@@ -827,6 +843,7 @@ async function loadMessages() {
 
   box.scrollTop = box.scrollHeight;
   markAsRead();
+  refreshTicks();
 
   /* 🔍 اگر جستجویی باز است، هایلایت‌ها را دوباره اعمال کن (جدید) */
   if (searchQ) {
@@ -870,9 +887,11 @@ function messageHTML(d, mid) {
   const editedTag = (d.edited && !d.deleted)
     ? '<span class="edited"> (ویرایش‌شده)</span>' : "";
 
-  /* ✓✓ تیک خوانده‌شدن برای پیام‌های خودم (گام ۴) */
+  /* ✓✓ تیک بر اساس آخرین خواندن طرف مقابل (گام ۴) */
   const tick = (mine && !isSaved)
-    ? (d.seen ? ' <span class="ticks">✓✓</span>' : ' <span class="ticks">✓</span>')
+    ? (otherReadTime > 0 && (d.time || 0) <= otherReadTime
+        ? ' <span class="ticks">✓✓</span>'
+        : ' <span class="ticks">✓</span>')
     : "";
 
   let rHtml = "";
