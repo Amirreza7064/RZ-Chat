@@ -3,6 +3,44 @@ import { sb } from './supabase.js';
 // ✅ آدرس سایت تو
 const SITE_URL = "https://rz-chat.rz-ai.workers.dev/index.html";
 
+/* ============================================================
+   🛡 کول‌داون ضد اسپم
+   ۵ رمز اشتباه → قفل ۳ دقیقه‌ای (هر ۵ خطای بعدی: قفل بیشتر)
+   ============================================================ */
+
+function lockInfo(key) {
+  const fails = parseInt(localStorage.getItem(key + "_fails") || "0", 10);
+  const until = parseInt(localStorage.getItem(key + "_until") || "0", 10);
+  return { fails, until, locked: Date.now() < until };
+}
+
+function lockLeft(key) {
+  const until = parseInt(localStorage.getItem(key + "_until") || "0", 10);
+  return Math.max(0, until - Date.now());
+}
+
+function registerFail(key) {
+  const nf = lockInfo(key).fails + 1;
+  localStorage.setItem(key + "_fails", String(nf));
+  if (nf >= 5) {
+    const mins = 3 * Math.floor(nf / 5);
+    localStorage.setItem(key + "_until", String(Date.now() + mins * 60 * 1000));
+    return mins;
+  }
+  return 0;
+}
+
+function clearFails(key) {
+  localStorage.removeItem(key + "_fails");
+  localStorage.removeItem(key + "_until");
+}
+
+function fmtLeft(ms) {
+  const s = Math.ceil(ms / 1000);
+  const m = Math.floor(s / 60);
+  return m > 0 ? `${m} دقیقه و ${s % 60} ثانیه` : `${s} ثانیه`;
+}
+
 function maskEmail(e) {
   const p = e.split("@");
   return p[0].charAt(0) + "***@" + p[1];
@@ -31,12 +69,20 @@ window.addEventListener("load", async () => {
 /* ---------- ایمیل و رمز ---------- */
 
 window.registerUser = async function () {
+  const wait = 60 * 1000 - (Date.now() - parseInt(localStorage.getItem("rz_signup") || "0", 10));
+  if (wait > 0) {
+    alert("⏳ جلوگیری از اسپم: " + fmtLeft(wait) + " دیگر دوباره امتحان کن.");
+    return;
+  }
+
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
   if (!email || !password) { alert("ایمیل و رمز را وارد کن"); return; }
 
   const { data, error } = await sb.auth.signUp({ email, password });
   if (error) { alert(error.message); return; }
+
+  localStorage.setItem("rz_signup", String(Date.now()));
 
   if (data.session) {
     location.href = "onboard.html";
@@ -46,12 +92,28 @@ window.registerUser = async function () {
 };
 
 window.loginUser = async function () {
+  if (lockInfo("rz_login").locked) {
+    alert("⏳ زیادی رمز اشتباه زدی! " + fmtLeft(lockLeft("rz_login")) + " صبر کن، بعد دوباره امتحان کن.");
+    return;
+  }
+
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
   if (!email || !password) { alert("ایمیل و رمز را وارد کن"); return; }
 
   const { data, error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) { alert(error.message); return; }
+  if (error) {
+    const mins = registerFail("rz_login");
+    if (mins > 0) {
+      alert("🚫 زیاد اشتباه زدی! " + mins + " دقیقه قفل شدی.");
+    } else {
+      const left = 5 - lockInfo("rz_login").fails;
+      alert(error.message + "\n\n⚠️ " + left + " تلاش دیگر تا قفل شدن!");
+    }
+    return;
+  }
+
+  clearFails("rz_login");
 
   const { data: prof } = await sb.from("profiles")
     .select("profile_done").eq("id", data.user.id).single();
@@ -63,6 +125,12 @@ window.loginUser = async function () {
 
 window.phoneLogin = async function () {
   const status = document.getElementById("phone-status");
+
+  if (lockInfo("rz_otp").locked) {
+    status.textContent = "⏳ زیادی لینک خواستی! " + fmtLeft(lockLeft("rz_otp")) + " صبر کن.";
+    return;
+  }
+
   const phone = normalizePhone(document.getElementById("phone").value);
   const emailInput = document.getElementById("phone-email").value.trim().toLowerCase();
 
@@ -100,6 +168,9 @@ window.phoneLogin = async function () {
     status.textContent = "خطا! " + error.message;
     return;
   }
+
+  const mins = registerFail("rz_otp");
+  if (mins > 0) status.textContent = "🚫 لینک رفت، ولی زیادی زیاد خواستی — " + mins + " دقیقه قفلی!";
 
   localStorage.setItem("phoneForSignIn", phone);
   status.textContent = "✉️ لینک ورود به " + maskEmail(email) + " فرستاده شد — ایمیلت را چک کن!";
